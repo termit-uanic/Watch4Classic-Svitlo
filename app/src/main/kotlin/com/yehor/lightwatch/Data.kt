@@ -1,5 +1,6 @@
 package com.yehor.lightwatch
 
+import android.app.job.JobScheduler
 import android.content.Context
 import androidx.wear.tiles.TileService
 import androidx.work.Constraints
@@ -26,18 +27,21 @@ enum class Source(val host: String) {
     /**
      * Dates a [load] call asks the source about. A date that is requested but missing from the result
      * has no (or no longer has a) published schedule. [hour] is the current hour in [Schedule.ZONE].
+     * POE needs a separate request per day, so tomorrow can be skipped with [withTomorrow]
+     * (the other sources return both days in one response).
      */
-    fun requested(today: LocalDate, hour: Int): List<LocalDate> =
+    fun requested(today: LocalDate, hour: Int, withTomorrow: Boolean = true): List<LocalDate> =
         // POE publishes tomorrow's schedule in the evening, so it is not requested before noon
-        if (this == POE && hour < 12) listOf(today) else listOf(today, today.plusDays(1))
+        if (this == POE && (hour < 12 || !withTomorrow)) listOf(today) else listOf(today, today.plusDays(1))
 
     fun load(
         queue: String, today: LocalDate, hour: Int = java.time.LocalTime.now(Schedule.ZONE).hour,
+        withTomorrow: Boolean = true,
     ): Map<LocalDate, IntArray> = when (this) {
         POE -> {
             // newgpv-info.php returns an HTML table of all queues for the date; empty means not published yet
             val out = LinkedHashMap<LocalDate, IntArray>()
-            for (d in requested(today, hour)) {
+            for (d in requested(today, hour, withTomorrow)) {
                 val body = "seldate=" + java.net.URLEncoder.encode(
                     """{"date_in":"${d.format(POE_DATE)}"}""", "UTF-8"
                 )
@@ -143,20 +147,35 @@ object Store {
             .remove("error").apply()
     }
 
-    /** Slot states 0/1/2 per day. */
+    /** The last parsed cache string and its result: the tile, the complication and the app read it all the time. */
+    @Volatile private var parsed: Pair<String, Map<LocalDate, IntArray>>? = null
+
+    /** Parses "2026-11-08=0000111...;2026-11-09=..."; broken entries (bad date, wrong length) are skipped. */
+    fun parseDays(s: String): Map<LocalDate, IntArray> = s.split(";").mapNotNull {
+        val parts = it.split("=")
+        if (parts.size != 2 || parts[1].length != Schedule.SLOTS) return@mapNotNull null
+        runCatching { LocalDate.parse(parts[0]) }.getOrNull()
+            ?.let { d -> d to IntArray(Schedule.SLOTS) { i -> parts[1][i].digitToIntOrNull() ?: 0 } }
+    }.toMap()
+
+    /** Slot states 0/1/2 per day. The result is shared between callers: it must not be modified. */
     fun raw(c: Context): Map<LocalDate, IntArray> {
         val s = p(c).getString("days", null) ?: return emptyMap()
-        return s.split(";").mapNotNull {
-            val parts = it.split("=")
-            if (parts.size != 2 || parts[1].length != Schedule.SLOTS) return@mapNotNull null
-            runCatching { LocalDate.parse(parts[0]) }.getOrNull()
-                ?.let { d -> d to IntArray(Schedule.SLOTS) { i -> parts[1][i].digitToIntOrNull() ?: 0 } }
-        }.toMap()
+        parsed?.let { if (it.first == s) return it.second }
+        return parseDays(s).also { parsed = s to it }
     }
+
+    /**
+     * Slot states (0 on, 1 off, 2 yellow) to "no power" flags. A yellow slot is the time needed for switching
+     * after an outage ("power may be absent"): it counts as no power when [maybeIsOff], else as power on.
+     * So the setting only moves the end of an outage, never its start.
+     */
+    fun flagsOf(raw: Map<LocalDate, IntArray>, maybeIsOff: Boolean): Map<LocalDate, BooleanArray> =
+        raw.mapValues { (_, a) -> BooleanArray(a.size) { a[it] == 1 || (maybeIsOff && a[it] == 2) } }
 
     /** true: no power (including "may be off" while switching). */
     fun load(c: Context, maybeIsOff: Boolean = true): Map<LocalDate, BooleanArray> =
-        raw(c).mapValues { (_, a) -> BooleanArray(a.size) { a[it] == 1 || (maybeIsOff && a[it] == 2) } }
+        flagsOf(raw(c), maybeIsOff)
 
     /** true: switching slot, power may be off. */
     fun loadMaybe(c: Context): Map<LocalDate, BooleanArray> =
@@ -168,6 +187,10 @@ object Store {
     fun clear(c: Context) { p(c).edit().clear().apply() }
 
     fun fetchedAt(c: Context): Long = p(c).getLong("fetched", 0L)
+
+    /** When tomorrow's schedule was last asked of the source (see [Fetcher]: it is rechecked at most hourly). */
+    fun tomorrowCheckedAt(c: Context): Long = p(c).getLong("tomorrowChecked", 0L)
+    fun markTomorrowChecked(c: Context, at: Long) { p(c).edit().putLong("tomorrowChecked", at).apply() }
     /** Data older than [STALE_WARN_MS]: show a warning, the schedule may have changed. */
     fun isStale(c: Context, now: Long = System.currentTimeMillis()): Boolean =
         fetchedAt(c).let { it > 0 && now - it > STALE_WARN_MS }
@@ -196,33 +219,48 @@ object Fetcher {
         val queue = Settings.queue(c)
         val today = LocalDate.now(Schedule.ZONE)
         val hour = java.time.LocalTime.now(Schedule.ZONE).hour
-        val days = source.load(queue, today, hour)
+        // Once tomorrow's schedule is cached it rarely changes: recheck it hourly instead of on every refresh
+        // (for POE that saves a whole extra request). Until it is published, keep asking.
+        val now = System.currentTimeMillis()
+        val tomorrow = today.plusDays(1)
+        val withTomorrow = tomorrow !in Store.raw(c) || now - Store.tomorrowCheckedAt(c) >= TOMORROW_RECHECK_MS
+        val days = source.load(queue, today, hour, withTomorrow)
         if (days.isEmpty()) throw FetchError(R.string.err_schedule_not_found, queue)
         // settings changed while the request was in flight: the result is stale
         if (source != Settings.source(c) || queue != Settings.queue(c)) return false
         // Tomorrow was asked for but is gone (the source withdrew it): don't keep showing the old copy.
         // Today is kept: a missing today is more likely a glitch of the site than a real change.
-        val missing = source.requested(today, hour).filter { it.isAfter(today) && it !in days }
+        val asked = source.requested(today, hour, withTomorrow)
+        val missing = asked.filter { it.isAfter(today) && it !in days }
         Store.save(c, days, missing)
+        if (tomorrow in asked) Store.markTomorrowChecked(c, now)
         return true
     }
 
-    /** Refresh the cache and redraw the tile + complication. */
+    private const val TOMORROW_RECHECK_MS = 60 * 60_000L
+
     /**
-     * Refresh the cache and redraw the tile + complication, but only if the schedule or the error changed.
-     * POE usually returns the same schedule, and there is no need to wake the watch face for nothing
-     * (the tile's "updated HH:MM" catches up on its regular 15-minute refresh).
+     * Refresh the cache and redraw what shows it. The tile and the complication are redrawn if the schedule or
+     * the error changed (POE usually returns the same schedule, no need to wake the watch face for nothing).
+     * If only the fetch time changed, just the tile is redrawn: it is the only place that shows the time
+     * ("updated HH:MM") and it would otherwise disagree with the app until its next hourly rebuild.
      */
     fun refreshAndNotify(c: Context): Boolean {
         val before = Store.snapshot(c)
+        val fetchedBefore = Store.fetchedAt(c)
         val ok = refresh(c)
         if (Store.snapshot(c) != before) notifyAll(c)
+        else if (Store.fetchedAt(c) != fetchedBefore) requestTileUpdate(c)
         Notify.schedule(c)
         return ok
     }
 
-    fun notifyAll(c: Context) {
+    private fun requestTileUpdate(c: Context) {
         TileService.getUpdater(c).requestUpdate(LightTileService::class.java)
+    }
+
+    fun notifyAll(c: Context) {
+        requestTileUpdate(c)
         LightComplicationService.requestUpdate(c)
         Notify.schedule(c)
     }
@@ -237,16 +275,50 @@ class RefreshWorker(c: Context, p: WorkerParameters) : CoroutineWorker(c, p) {
 
 object Refresh {
     private val net = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-    private const val STALE_MS = 15 * 60_000L
+    /** The background job also waits for a battery that is not low: refreshes can wait, the watch cannot. */
+    private val netBatteryOk = Constraints.Builder()
+        .setRequiredNetworkType(NetworkType.CONNECTED).setRequiresBatteryNotLow(true).build()
+    /**
+     * The tile, the complication and the app trigger an extra refresh when the data is older than this.
+     * It is longer than the periodic job interval (30 min + flex), so that they only step in if that job
+     * is stuck, and do not add their own network wake-ups on top of it.
+     */
+    private const val STALE_MS = 45 * 60_000L
 
-    /** Periodic refresh every 15 min (the WorkManager minimum). POE can change the schedule at any time. */
+    /**
+     * Periodic refresh every 30 min. The countdown is computed by the watch itself, so the data only has to be
+     * fresh enough to notice a changed schedule; the 10 min flex window lets the system batch the wake-up
+     * with other network jobs.
+     */
     fun ensure(c: Context) {
-        WorkManager.getInstance(c).cancelUniqueWork("periodic") // old 30-minute job
-        WorkManager.getInstance(c).enqueueUniquePeriodicWork(
-            "periodic15", ExistingPeriodicWorkPolicy.KEEP,
-            PeriodicWorkRequestBuilder<RefreshWorker>(15, TimeUnit.MINUTES).setConstraints(net).build()
-        )
+        // the tile, the complication and the app call this on every request: do the work once per process
+        if (ensured) return
+        synchronized(this) {
+            if (ensured) return
+            val wm = WorkManager.getInstance(c.applicationContext)
+            wm.cancelUniqueWork("periodic") // old 30-minute job
+            wm.cancelUniqueWork("periodic15") // old 15-minute job
+            // KEEP trusts the WorkManager database and never looks at the system job, but after a reboot the
+            // JobScheduler job can be gone while the database still says "enqueued" (seen on the watch: no
+            // refresh job for 21 h after a reboot; neither KEEP nor UPDATE brings it back). So look at
+            // JobScheduler itself: if our periodic job is not there, replace the work, which registers it.
+            // Only the periodic job requires "battery not low", this tells it from the one-off refresh job.
+            val hasJob = c.getSystemService(JobScheduler::class.java).allPendingJobs.any {
+                it.service.className == JOB_SERVICE && it.isRequireBatteryNotLow
+            }
+            wm.enqueueUniquePeriodicWork(
+                "periodic30",
+                if (hasJob) ExistingPeriodicWorkPolicy.KEEP else ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
+                PeriodicWorkRequestBuilder<RefreshWorker>(30, TimeUnit.MINUTES, 10, TimeUnit.MINUTES)
+                    .setConstraints(netBatteryOk).build()
+            )
+            ensured = true
+        }
     }
+
+    @Volatile private var ensured = false
+
+    private const val JOB_SERVICE = "androidx.work.impl.background.systemjob.SystemJobService"
 
     /** One-off refresh now. */
     fun now(c: Context) {
