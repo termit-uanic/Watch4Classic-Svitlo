@@ -14,15 +14,15 @@ class TileRingTest {
 
     private fun layout(): Box = Box.Builder()
         .addContent(TileRing.dashes(flags, maybe, curSlot = 40, yellowAsOutage = true))
-        .addContent(TileRing.hours())
+        .addContent(TileRing.hours(hot = 20))
         .addContent(TileRing.nowMark(LocalDate.of(2026, 11, 14), 20 * 60 + 6))
         .build()
 
     @Test fun ringLayoutStaysSmall() {
         // the tile ships one layout per half hour (12 of them) and a tile is limited to a binder transaction;
-        // measured at about 2.6 KB
+        // measured at about 5 KB
         val bytes = size(layout())
-        assertTrue("one ring layout is $bytes bytes", bytes < 6_000)
+        assertTrue("one ring layout is $bytes bytes", bytes < 9_000)
     }
 
     @Test fun buildsWithoutDataToo() {

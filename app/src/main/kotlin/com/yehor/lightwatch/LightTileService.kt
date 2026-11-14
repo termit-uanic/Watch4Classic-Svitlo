@@ -118,7 +118,7 @@ class LightTileService : TileService() {
                     .build()
             )
             .addContent(ring(days, now))
-            .addContent(TileRing.hours())
+            .addContent(TileRing.hours(DialModel.hourOf(now.hour * 60 + now.minute)))
             .addContent(TileRing.nowMark(now.toLocalDate(), now.hour * 60 + now.minute))
             .addContent(center(st, now, err, fetched))
             .build()
@@ -264,8 +264,8 @@ class LightTileService : TileService() {
 
     private companion object {
         const val RES_VERSION = "4"
-        /** Keeps the text inside the ring and its hour labels. */
-        const val CENTER_PADDING_DP = 30f
+        /** Keeps the text inside the ring (the hour labels are outside of it). */
+        const val CENTER_PADDING_DP = 28f
         /**
          * Half-hour layouts ahead (~6 h). A layout per slot is needed because the strip shifts every 30 min,
          * so a longer timeline means fewer tile rebuilds; real changes of the data call requestUpdate().

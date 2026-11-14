@@ -20,9 +20,9 @@ import androidx.wear.protolayout.expression.DynamicBuilders.DynamicInstant
 import java.time.LocalDate
 
 /**
- * The 24-hour ring around the tile, built from ProtoLayout arcs: 48 dashes (one per half hour, 00:00 at the
- * top), a few hours inside it and a white mark at the current time. It is the same picture as the day dial in
- * the app (see [DialModel] for the colours), and it needs no Context.
+ * The 24-hour ring around the tile, built from ProtoLayout arcs, laid out like the day dial in the app: the 24
+ * hours on the outer edge, inside them 48 dashes (one per half hour, 00:00 at the top) and a white mark at the
+ * current time. See [DialModel] for the colours. It needs no Context.
  */
 object TileRing {
     private const val THICKNESS_DP = 8f
@@ -31,8 +31,10 @@ object TileRing {
     private const val DASH_DEG = 1.6f
     private const val GAP_DEG = 5.9f
 
-    /** The hours that get a label (the tile is small, the app shows all 24). */
-    val LABELED_HOURS = listOf(0, 3, 6, 9, 12, 15, 18, 21)
+    /** The band on the outer edge for the hour labels (9 sp is the smallest text Google recommends on a tile). */
+    const val LABEL_BAND_DP = 13f
+
+    private const val LABEL_SP = 9f
 
     private fun color(role: DialModel.Role, past: Boolean): Int = when (role) {
         DialModel.Role.RED -> if (past) Palette.RED_DIM else Palette.RED
@@ -41,8 +43,16 @@ object TileRing {
         DialModel.Role.NO_DATA -> Palette.NODATA
     }
 
-    private fun fullBox(vararg content: LayoutElement): Box {
+    /** A box as large as the tile; [inset] keeps its content that far from the edge. */
+    private fun fullBox(inset: Float = 0f, vararg content: LayoutElement): Box {
         val b = Box.Builder().setWidth(expand()).setHeight(expand())
+        if (inset > 0f) {
+            b.setModifiers(
+                ModifiersBuilders.Modifiers.Builder()
+                    .setPadding(ModifiersBuilders.Padding.Builder().setAll(dp(inset)).build())
+                    .build()
+            )
+        }
         content.forEach { b.addContent(it) }
         return b.build()
     }
@@ -67,36 +77,30 @@ object TileRing {
             )
             arc.addContent(ArcSpacer.Builder().setLength(degrees(GAP_DEG)).build())
         }
-        return fullBox(arc.build())
+        return fullBox(LABEL_BAND_DP, arc.build())
     }
 
-    /** The labelled hours just inside the ring; each label stays upright. */
-    fun hours(): LayoutElement {
-        val labels = LABELED_HOURS.map { h ->
-            Arc.Builder()
-                .setAnchorAngle(degrees(h * 15f))
-                .setAnchorType(LayoutElementBuilders.ARC_ANCHOR_CENTER)
-                .addContent(
-                    ArcAdapter.Builder()
-                        .setRotateContents(false)
-                        .setContent(
-                            Text.Builder()
-                                .setText("%02d".format(h))
-                                .setFontStyle(FontStyle.Builder().setSize(sp(9f)).setColor(argb(Palette.LABEL)).build())
-                                .build()
-                        )
-                        .build()
-                )
-                .build()
-        }
-        val box = Box.Builder()
-            .setWidth(expand()).setHeight(expand())
-            .setModifiers(
-                ModifiersBuilders.Modifiers.Builder()
-                    .setPadding(ModifiersBuilders.Padding.Builder().setAll(dp(THICKNESS_DP + 3f)).build())
+    /** All 24 hours on the outer edge, each label upright; the hour [hot] (the current one) is white and bold. */
+    fun hours(hot: Int): LayoutElement {
+        val box = Box.Builder().setWidth(expand()).setHeight(expand())
+        for (h in 0 until 24) {
+            val style = FontStyle.Builder()
+                .setSize(sp(LABEL_SP))
+                .setColor(argb(if (h == hot) Palette.WHITE else Palette.LABEL))
+            if (h == hot) style.setWeight(LayoutElementBuilders.FONT_WEIGHT_BOLD)
+            box.addContent(
+                Arc.Builder()
+                    .setAnchorAngle(degrees(h * 15f))
+                    .setAnchorType(LayoutElementBuilders.ARC_ANCHOR_CENTER)
+                    .addContent(
+                        ArcAdapter.Builder()
+                            .setRotateContents(false)
+                            .setContent(Text.Builder().setText("%02d".format(h)).setFontStyle(style.build()).build())
+                            .build()
+                    )
                     .build()
             )
-        labels.forEach { box.addContent(it) }
+        }
         return box.build()
     }
 
@@ -113,6 +117,7 @@ object TileRing {
             .setDynamicValue(seconds.asFloat().times(360f / 86_400f))
             .build()
         return fullBox(
+            LABEL_BAND_DP,
             Arc.Builder()
                 .setAnchorAngle(angle)
                 .setAnchorType(LayoutElementBuilders.ARC_ANCHOR_CENTER)
