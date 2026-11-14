@@ -122,6 +122,113 @@ object Notify {
         )
     }
 
+    // ---------------------------------------------------------------- quiet hours
+
+    private const val CHANNEL_QUIET = "quiet"
+
+    /**
+     * Quiet hours apply to every notification of the app: during them a notification is posted to this low
+     * importance channel, so it still lands in the shelf but makes no sound, no vibration and does not
+     * pop up or wake the screen. (Dropping the notification would lose information, for example a schedule
+     * that is usually published in the evening.)
+     */
+    private fun quietChannel(c: Context) {
+        val nm = c.getSystemService(NotificationManager::class.java)
+        if (nm.getNotificationChannel(CHANNEL_QUIET) != null) return
+        nm.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_QUIET, c.getString(R.string.channel_quiet_name), NotificationManager.IMPORTANCE_LOW
+            ).apply { description = c.getString(R.string.channel_quiet_description) }
+        )
+    }
+
+    /** The channel to post to: [normal], or the silent one during quiet hours. */
+    private fun channelFor(c: Context, normal: String, now: ZonedDateTime): String {
+        if (!QuietHours.active(Settings.quietFrom(c), Settings.quietTo(c), now.hour)) return normal
+        quietChannel(c)
+        return CHANNEL_QUIET
+    }
+
+    // ---------------------------------------------------------------- schedule changes
+
+    private const val CHANNEL_CHANGES = "schedule_changes"
+    private const val ID_TODAY = 2
+    private const val ID_TOMORROW = 3
+    private const val MAX_RANGES = 4
+
+    private fun changesChannel(c: Context) {
+        val nm = c.getSystemService(NotificationManager::class.java)
+        if (nm.getNotificationChannel(CHANNEL_CHANGES) != null) return
+        // a calmer channel than the reminders: this is information, not "the power goes off in 10 minutes"
+        nm.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_CHANGES, c.getString(R.string.channel_schedule_name), NotificationManager.IMPORTANCE_DEFAULT
+            ).apply { description = c.getString(R.string.channel_schedule_description) }
+        )
+    }
+
+    /**
+     * Called with the cache before and after a successful fetch. Tells about a changed schedule for today
+     * and a new schedule for tomorrow, if the user turned that on (both are off by default).
+     */
+    fun onScheduleSaved(c: Context, old: Map<java.time.LocalDate, IntArray>, fresh: Map<java.time.LocalDate, IntArray>) {
+        val wantToday = Settings.notifyTodayChanged(c)
+        val wantTomorrow = Settings.notifyTomorrowNew(c)
+        if (!wantToday && !wantTomorrow) return
+        val now = ZonedDateTime.now(Schedule.ZONE)
+        val r = ScheduleChanges.detect(old, fresh, now.toLocalDate(), Schedule.slotOf(now), Settings.maybeIsOff(c))
+        if (wantToday) r.today?.let {
+            showChange(c, ID_TODAY, c.getString(R.string.notify_today_title), todayText(c, it))
+        }
+        if (wantTomorrow) r.tomorrow?.let {
+            showChange(c, ID_TOMORROW, c.getString(R.string.notify_tomorrow_title), tomorrowText(c, it))
+        }
+    }
+
+    private fun ranges(list: List<Pair<Int, Int>>): String =
+        list.take(MAX_RANGES).joinToString(", ") {
+            "${Schedule.slotTime(it.first)}–${Schedule.slotTime(it.second)}"
+        } + if (list.size > MAX_RANGES) "…" else ""
+
+    /** "Added: 14:00–16:00" / "Removed: 20:00–22:00", what changed in the rest of the day. */
+    private fun todayText(c: Context, d: ScheduleChanges.Diff): String = listOfNotNull(
+        d.added.takeIf { it.isNotEmpty() }?.let { c.getString(R.string.notify_added, ranges(it)) },
+        d.removed.takeIf { it.isNotEmpty() }?.let { c.getString(R.string.notify_removed, ranges(it)) },
+    ).joinToString("\n")
+
+    /** "Outages: 06:30–10:30, 12:30–16:30 · 8h total" or "No outages tomorrow". */
+    private fun tomorrowText(c: Context, flags: BooleanArray): String {
+        val list = Schedule.offRanges(flags)
+        if (list.isEmpty()) return c.getString(R.string.notify_tomorrow_none)
+        return c.getString(R.string.notify_tomorrow_outages, ranges(list), Fmt.duration(c, Schedule.offDuration(flags)))
+    }
+
+    private fun showChange(c: Context, id: Int, title: String, text: String) {
+        changesChannel(c)
+        val open = PendingIntent.getActivity(
+            c, 0, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
+        )
+        val n = android.app.Notification.Builder(c, channelFor(c, CHANNEL_CHANGES, ZonedDateTime.now(Schedule.ZONE)))
+            .setSmallIcon(R.drawable.ic_bolt_mono)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(android.app.Notification.BigTextStyle().bigText(text))
+            .setContentIntent(open)
+            // an explicit button as well: on a watch a tap on the card body is easy to miss
+            .addAction(
+                android.app.Notification.Action.Builder(
+                    android.graphics.drawable.Icon.createWithResource(c, R.drawable.ic_bolt_mono),
+                    c.getString(R.string.notify_action_open), open
+                ).build()
+            )
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .setCategory(android.app.Notification.CATEGORY_STATUS)
+            .build()
+        // one notification per kind: a newer change replaces the older one instead of stacking up
+        runCatching { c.getSystemService(NotificationManager::class.java).notify(id, n) }
+    }
+
     internal fun show(c: Context, off: Boolean, at: ZonedDateTime) {
         channel(c)
         val now = ZonedDateTime.now(Schedule.ZONE)
@@ -134,7 +241,7 @@ object Notify {
         val open = PendingIntent.getActivity(
             c, 0, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
         )
-        val n = android.app.Notification.Builder(c, CHANNEL)
+        val n = android.app.Notification.Builder(c, channelFor(c, CHANNEL, now))
             .setSmallIcon(if (off) R.drawable.ic_bolt_off_mono else R.drawable.ic_bolt_mono)
             .setContentTitle(title)
             .setContentText(text)
