@@ -26,12 +26,12 @@ class TileRingTest {
     @Test fun oneRingLayoutStaysSmall() {
         // the tile ships one layout per half hour (12 of them) and a tile is limited to a binder transaction
         val bytes = size(layout(1))
-        assertTrue("one ring layout is $bytes bytes", bytes < 9_000)
+        assertTrue("one ring layout is $bytes bytes", bytes < 12_000)
     }
 
     @Test fun twoRingsLayoutStaysSmall() {
         val bytes = size(layout(2))
-        assertTrue("two rings layout is $bytes bytes", bytes < 14_000)
+        assertTrue("two rings layout is $bytes bytes", bytes < 12_000)
     }
 
     @Test fun buildsWithoutDataAndOnBothRings() {

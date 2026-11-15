@@ -1,5 +1,6 @@
 package com.yehor.lightwatch
 
+import androidx.wear.protolayout.ColorBuilders.ColorProp
 import androidx.wear.protolayout.ColorBuilders.argb
 import androidx.wear.protolayout.DimensionBuilders.DegreesProp
 import androidx.wear.protolayout.DimensionBuilders.degrees
@@ -16,6 +17,9 @@ import androidx.wear.protolayout.LayoutElementBuilders.FontStyle
 import androidx.wear.protolayout.LayoutElementBuilders.LayoutElement
 import androidx.wear.protolayout.LayoutElementBuilders.Text
 import androidx.wear.protolayout.ModifiersBuilders
+import androidx.wear.protolayout.expression.DynamicBuilders.DynamicBool
+import androidx.wear.protolayout.expression.DynamicBuilders.DynamicColor
+import androidx.wear.protolayout.expression.DynamicBuilders.DynamicDuration
 import androidx.wear.protolayout.expression.DynamicBuilders.DynamicInstant
 import java.time.LocalDate
 import kotlin.math.max
@@ -108,6 +112,28 @@ object TileRing {
         DialModel.Role.NO_DATA -> Palette.NODATA
     }
 
+    /**
+     * The time since the start of [date] (in the watch's zone), counted by the watch from the platform time
+     * while the tile is shown. (The zoned date-time API of this ProtoLayout version is not public.)
+     */
+    private fun sinceStartOf(date: LocalDate): DynamicDuration =
+        DynamicInstant.withSecondsPrecision(date.atStartOfDay(Schedule.ZONE).toInstant())
+            .durationUntil(DynamicInstant.platformTimeWithSecondsPrecision())
+
+    /**
+     * A colour that the watch switches by itself: [whenTrue] while the condition holds, else [otherwise].
+     * [static] is the value of the layout as it was built (and of a renderer that cannot evaluate it).
+     *
+     * This keeps the ring right between the half-hour layouts: the slots that are over go dark and the current
+     * hour is highlighted by the watch, whenever the tile is shown, whatever layout the system has applied.
+     * (Verified on a Galaxy Watch Ultra 2: dynamic colours work on the dashes, on plain text and on the hour
+     * labels. `eq()` on the hours did not highlight anything there, a range check with gte() and lt() does.)
+     */
+    private fun dynamicColor(static: Int, condition: DynamicBool, whenTrue: Int, otherwise: Int): ColorProp =
+        ColorProp.Builder(static)
+            .setDynamicValue(DynamicColor.onCondition(condition).use(whenTrue).elseUse(otherwise))
+            .build()
+
     /** A box as large as the tile; [inset] keeps its content that far from the edge. */
     private fun fullBox(inset: Float = 0f, vararg content: LayoutElement): Box {
         val b = Box.Builder().setWidth(expand()).setHeight(expand())
@@ -134,15 +160,21 @@ object TileRing {
     ): List<LayoutElement> {
         val list = rings(rings)
         val out = ArrayList<LayoutElement>()
-        for (ring in list) out += dashes(ring, flags, maybe, curSlot, yellowAsOutage)
-        out += hours(if (innerLabels) list else list.take(1), hotLabel(rings, innerLabels, hotHour))
+        for (ring in list) out += dashes(ring, flags, maybe, curSlot, yellowAsOutage, date)
+        out += hours(
+            if (innerLabels) list else list.take(1), hotLabel(rings, innerLabels, hotHour), date,
+            afternoonOnOuter = rings == 2 && !innerLabels
+        )
         out += nowMark(list, date, nowMinute)
         return out
     }
 
     private fun dashes(
         ring: Ring, flags: BooleanArray?, maybe: BooleanArray?, curSlot: Int, yellowAsOutage: Boolean,
+        date: LocalDate,
     ): LayoutElement {
+        // minutes of the day counted by the watch: slot i is over once (i + 1) * 30 minutes have passed
+        val minutesNow = sinceStartOf(date).toIntMinutes()
         val (line, gap) =
             if (ring.slots == 48) DASH_DEG to GAP_DEG
             else dashGeometry(TILE_RADIUS_DP - ring.dashInset - THICKNESS_DP / 2, ring.pitchDeg, ring.pitchDeg - 3.5f)
@@ -152,11 +184,17 @@ object TileRing {
         for (k in 0 until ring.slots) {
             val i = ring.firstSlot + k
             val role = DialModel.roleOf(flags, maybe, i, yellowAsOutage)
+            val normal = color(role, false)
+            val dim = color(role, true)
+            val static = if (DialModel.isPast(i, curSlot)) dim else normal
             arc.addContent(
                 ArcLine.Builder()
                     .setLength(degrees(line))
                     .setThickness(dp(THICKNESS_DP))
-                    .setColor(argb(color(role, DialModel.isPast(i, curSlot))))
+                    .setColor(
+                        if (curSlot >= 0 && normal != dim) dynamicColor(static, minutesNow.gte((i + 1) * 30), dim, normal)
+                        else argb(static)
+                    )
                     .setStrokeCap(LayoutElementBuilders.STROKE_CAP_ROUND)
                     .build()
             )
@@ -165,8 +203,14 @@ object TileRing {
         return fullBox(ring.dashInset, arc.build())
     }
 
-    /** Every hour of a ring on its edge, each label upright; the hour [hot] (the current one) is white and bold. */
-    private fun hours(rings: List<Ring>, hot: Int): LayoutElement {
+    /**
+     * Every hour of a ring on its edge, each label upright. The label of the current hour is white and the others
+     * grey; the watch decides which hour is the current one (a dynamic colour), [hot] is the value of the layout.
+     * With [afternoonOnOuter] the outer labels also light up for the hours 12-23 (no labels inside the inner ring).
+     */
+    private fun hours(rings: List<Ring>, hot: Int, date: LocalDate, afternoonOnOuter: Boolean): LayoutElement {
+        val hoursNow = sinceStartOf(date).toIntHours()
+        fun isHour(h: Int): DynamicBool = hoursNow.gte(h).and(hoursNow.lt(h + 1))
         val layers = rings.map { ring ->
             val box = Box.Builder().setWidth(expand()).setHeight(expand())
             if (ring.labelInset > 0f) {
@@ -178,10 +222,10 @@ object TileRing {
             }
             for (n in 0 until ring.hours) {
                 val h = ring.firstHour + n
+                val now = if (afternoonOnOuter && ring.firstHour == 0) isHour(h).or(isHour(h + 12)) else isHour(h)
                 val style = FontStyle.Builder()
                     .setSize(sp(ring.labelSp))
-                    .setColor(argb(if (h == hot) Palette.WHITE else Palette.LABEL))
-                if (h == hot) style.setWeight(LayoutElementBuilders.FONT_WEIGHT_BOLD)
+                    .setColor(dynamicColor(if (h == hot) Palette.WHITE else Palette.LABEL, now, Palette.WHITE, Palette.LABEL))
                 box.addContent(
                     Arc.Builder()
                         .setAnchorAngle(degrees(n * ring.hourDeg))
