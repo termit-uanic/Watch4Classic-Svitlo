@@ -69,6 +69,17 @@ class TileRingTest {
         assertTrue(TileRing.countdownSp(2, innerLabels = false) > TileRing.countdownSp(2, innerLabels = true))
     }
 
+    @Test fun highlightMovesToTheNearestOuterLabelWhenThereAreNoInnerLabels() {
+        // two rings, labels only outside: the afternoon hours are shown by the outer label at the same angle
+        assertEquals(0, TileRing.hotLabel(2, innerLabels = false, hour = 12))
+        assertEquals(8, TileRing.hotLabel(2, innerLabels = false, hour = 20))
+        assertEquals(11, TileRing.hotLabel(2, innerLabels = false, hour = 23))
+        assertEquals(5, TileRing.hotLabel(2, innerLabels = false, hour = 5))
+        // with the inner labels, and on one ring, the hour has its own label
+        assertEquals(20, TileRing.hotLabel(2, innerLabels = true, hour = 20))
+        assertEquals(20, TileRing.hotLabel(1, innerLabels = false, hour = 20))
+    }
+
     @Test fun centreNeedsMoreRoomWithTwoRings() {
         assertTrue(TileRing.centerPaddingDp(2) > TileRing.centerPaddingDp(1))
         assertTrue(TileRing.countdownSp(2) < TileRing.countdownSp(1))

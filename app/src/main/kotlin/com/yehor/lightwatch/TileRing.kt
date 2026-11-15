@@ -55,6 +55,14 @@ object TileRing {
         else -> 38f
     }
 
+    /**
+     * The hour label to highlight. With two rings and no labels inside the inner ring the hours 12-23 have no label
+     * of their own, so the nearest label on the outer ring takes the highlight: the inner ring starts at the top
+     * like the outer one, so hour 12 sits at the label "00", hour 13 at "01", and so on.
+     */
+    fun hotLabel(rings: Int, innerLabels: Boolean, hour: Int): Int =
+        if (rings == 2 && !innerLabels) hour % 12 else hour
+
     /** The size of the countdown in the middle: the free space is smaller with two rings. */
     fun countdownSp(rings: Int, innerLabels: Boolean = true): Float = when {
         rings != 2 -> 30f
@@ -127,7 +135,7 @@ object TileRing {
         val list = rings(rings)
         val out = ArrayList<LayoutElement>()
         for (ring in list) out += dashes(ring, flags, maybe, curSlot, yellowAsOutage)
-        out += hours(if (innerLabels) list else list.take(1), hotHour)
+        out += hours(if (innerLabels) list else list.take(1), hotLabel(rings, innerLabels, hotHour))
         out += nowMark(list, date, nowMinute)
         return out
     }
