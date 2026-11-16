@@ -186,6 +186,14 @@ class LightTileService : TileService() {
                         13f, GREY
                     )
                 )
+            // how long the next phase lasts, as in the app: "then 1h without power" / "then 3h with power"
+            st.nextLen?.let {
+                val len = (if (st.nextEndIsMinimum) "≥ " else "") + Fmt.duration(this, it)
+                col.addContent(gap(1f))
+                    .addContent(
+                        text(getString(if (st.off) R.string.next_with_power else R.string.next_without_power, len), 12f, LABEL)
+                    )
+            }
         }
 
         if (fetched > 0) {
