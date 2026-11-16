@@ -110,17 +110,19 @@ class DialView(c: Context, private var data: DialData) : View(c) {
 
         // hours around the ring, upright; the current hour is highlighted
         val hour = if (data.nowMinute >= 0) DialModel.hourOf(data.nowMinute) else -1
-        fun label(h: Int, radius: Float, hot: Boolean) {
-            val a = Math.toRadians(if (two) (h % 12) * 30.0 else h * 15.0)
+        fun label(shown: Int, radius: Float, hot: Boolean, position: Int = shown) {
+            val a = Math.toRadians(if (two) (position % 12) * 30.0 else position * 15.0)
             val x = cx + radius * sin(a).toFloat()
             val y = cy - radius * cos(a).toFloat() - (text.fontMetrics.ascent + text.fontMetrics.descent) / 2
             text.color = if (hot) Palette.WHITE else Palette.LABEL
             text.typeface = if (hot) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-            cv.drawText("%02d".format(h), x, y, text)
+            cv.drawText("%02d".format(shown), x, y, text)
         }
         text.textSize = labelSize
         val hotOuter = if (hour >= 0) DialModel.hotLabel(hour, rings, data.innerLabels) else -1
-        for (h in 0 until (if (two) 12 else 24)) label(h, labelR, h == hotOuter)
+        // like the tile: with two rings and nothing inside, the outer labels show 12-23 from noon on
+        val pm = two && !data.innerLabels && data.nowMinute >= 720
+        for (h in 0 until (if (two) 12 else 24)) label(if (pm) h + 12 else h, labelR, h == hotOuter, h)
         var freeR = ringR[rings - 1] - thickness / 2 - dp(3f)
         if (two && data.innerLabels) {
             val innerSize = sp(9f)
