@@ -17,10 +17,14 @@ import androidx.wear.protolayout.LayoutElementBuilders.FontStyle
 import androidx.wear.protolayout.LayoutElementBuilders.LayoutElement
 import androidx.wear.protolayout.LayoutElementBuilders.Text
 import androidx.wear.protolayout.ModifiersBuilders
+import androidx.wear.protolayout.TypeBuilders.StringLayoutConstraint
+import androidx.wear.protolayout.TypeBuilders.StringProp
 import androidx.wear.protolayout.expression.DynamicBuilders.DynamicBool
 import androidx.wear.protolayout.expression.DynamicBuilders.DynamicColor
 import androidx.wear.protolayout.expression.DynamicBuilders.DynamicDuration
 import androidx.wear.protolayout.expression.DynamicBuilders.DynamicInstant
+import androidx.wear.protolayout.expression.DynamicBuilders.DynamicInt32
+import androidx.wear.protolayout.expression.DynamicBuilders.DynamicString
 import java.time.LocalDate
 import kotlin.math.max
 
@@ -163,7 +167,7 @@ object TileRing {
         for (ring in list) out += dashes(ring, flags, maybe, curSlot, yellowAsOutage, date)
         out += hours(
             if (innerLabels) list else list.take(1), hotLabel(rings, innerLabels, hotHour), date,
-            afternoonOnOuter = rings == 2 && !innerLabels
+            afternoonOnOuter = rings == 2 && !innerLabels, nowMinute = nowMinute
         )
         out += nowMark(list, date, nowMinute)
         return out
@@ -208,7 +212,21 @@ object TileRing {
      * grey; the watch decides which hour is the current one (a dynamic colour), [hot] is the value of the layout.
      * With [afternoonOnOuter] the outer labels also light up for the hours 12-23 (no labels inside the inner ring).
      */
-    private fun hours(rings: List<Ring>, hot: Int, date: LocalDate, afternoonOnOuter: Boolean): LayoutElement {
+    /**
+     * The text of an hour label. With [outerOnly] (two rings, nothing inside) the outer labels show 12-23 from noon
+     * on, so that the label at the angle of the current time carries the real hour; the watch switches them itself.
+     */
+    private fun labelText(h: Int, outerOnly: Boolean, hoursNow: DynamicInt32, nowMinute: Int): StringProp {
+        if (!outerOnly) return StringProp.Builder("%02d".format(h)).build()
+        return StringProp.Builder("%02d".format(if (nowMinute >= 720) h + 12 else h))
+            .setDynamicValue(
+                DynamicString.onCondition(hoursNow.gte(12)).use("%02d".format(h + 12)).elseUse("%02d".format(h))
+            ).build()
+    }
+
+    private fun hours(
+        rings: List<Ring>, hot: Int, date: LocalDate, afternoonOnOuter: Boolean, nowMinute: Int,
+    ): LayoutElement {
         val hoursNow = sinceStartOf(date).toIntHours()
         fun isHour(h: Int): DynamicBool = hoursNow.gte(h).and(hoursNow.lt(h + 1))
         val layers = rings.map { ring ->
@@ -222,10 +240,18 @@ object TileRing {
             }
             for (n in 0 until ring.hours) {
                 val h = ring.firstHour + n
-                val now = if (afternoonOnOuter && ring.firstHour == 0) isHour(h).or(isHour(h + 12)) else isHour(h)
+                val outerOnly = afternoonOnOuter && ring.firstHour == 0
+                val static = if (h == hot) Palette.WHITE else Palette.LABEL
+                val color = if (afternoonOnOuter && ring.firstHour == 0) {
+                    // nested conditions: the watch does not evaluate DynamicBool.or() here (only and())
+                    ColorProp.Builder(static).setDynamicValue(
+                        DynamicColor.onCondition(isHour(h)).use(Palette.WHITE)
+                            .elseUse(DynamicColor.onCondition(isHour(h + 12)).use(Palette.WHITE).elseUse(Palette.LABEL))
+                    ).build()
+                } else dynamicColor(static, isHour(h), Palette.WHITE, Palette.LABEL)
                 val style = FontStyle.Builder()
                     .setSize(sp(ring.labelSp))
-                    .setColor(dynamicColor(if (h == hot) Palette.WHITE else Palette.LABEL, now, Palette.WHITE, Palette.LABEL))
+                    .setColor(color)
                 box.addContent(
                     Arc.Builder()
                         .setAnchorAngle(degrees(n * ring.hourDeg))
@@ -233,7 +259,9 @@ object TileRing {
                         .addContent(
                             ArcAdapter.Builder()
                                 .setRotateContents(false)
-                                .setContent(Text.Builder().setText("%02d".format(h)).setFontStyle(style.build()).build())
+                                .setContent(Text.Builder().setText(labelText(h, outerOnly, hoursNow, nowMinute))
+                                    .apply { if (outerOnly) setLayoutConstraintsForDynamicText(StringLayoutConstraint.Builder("0000").build()) }
+                                    .setFontStyle(style.build()).build())
                                 .build()
                         )
                         .build()
