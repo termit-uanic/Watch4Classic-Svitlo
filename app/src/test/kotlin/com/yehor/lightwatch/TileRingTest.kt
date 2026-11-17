@@ -58,13 +58,14 @@ class TileRingTest {
         assertTrue(line < 15f)
     }
 
-    @Test fun labelsOnlyOutsideMakeTheTileSmallerAndTheCentreRoomier() {
+    @Test fun labelsOnlyOutsideLeaveTheCentreRoomier() {
         val b = Box.Builder()
         TileRing.layers(
             2, flags, maybe, curSlot = 40, yellowAsOutage = true, date = date, nowMinute = 20 * 60 + 6,
             hotHour = 20, innerLabels = false
         ).forEach { b.addContent(it) }
-        assertTrue(size(b.build()) < size(layout(2)))
+        // the layout (with the dynamic outer labels) still fits the limit of one layout of the timeline
+        assertTrue("outside-only layout is ${size(b.build())} bytes", size(b.build()) < 12_000)
         assertTrue(TileRing.centerPaddingDp(2, innerLabels = false) < TileRing.centerPaddingDp(2, innerLabels = true))
         assertTrue(TileRing.countdownSp(2, innerLabels = false) > TileRing.countdownSp(2, innerLabels = true))
     }

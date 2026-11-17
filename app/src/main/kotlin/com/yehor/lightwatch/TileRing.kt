@@ -230,7 +230,9 @@ object TileRing {
     private fun hours(
         rings: List<Ring>, hot: Int, date: LocalDate, afternoonOnOuter: Boolean, nowMinute: Int,
     ): LayoutElement {
-        val hoursNow = sinceStartOf(date).toIntHours()
+        // The hour of the day, modulo 24: the layout can stay on the tile past midnight (the system does not
+        // re-apply the labels of a new layout), when the hours since the start of its own date are 24 and more.
+        val hoursNow = sinceStartOf(date).toIntHours().rem(24)
         fun isHour(h: Int): DynamicBool = hoursNow.gte(h).and(hoursNow.lt(h + 1))
         val layers = rings.map { ring ->
             val box = Box.Builder().setWidth(expand()).setHeight(expand())
