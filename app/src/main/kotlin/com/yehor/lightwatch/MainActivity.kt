@@ -3,8 +3,6 @@ package com.yehor.lightwatch
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -39,18 +37,36 @@ class MainActivity : Activity() {
     private lateinit var btn: TextView
     private lateinit var sourceRow: TextView
     private lateinit var queueRow: TextView
-    private lateinit var maybeRow: TextView
-    private lateinit var maybeSwitch: Switch
-    private lateinit var maybeCard: LinearLayout
+    private lateinit var yellow: SwitchRow
+    private lateinit var notifyToday: SwitchRow
+    private lateinit var tileNext: SwitchRow
+    private lateinit var notifyTomorrow: SwitchRow
+    private lateinit var quietRow: TextView
+    private lateinit var tileRow: TextView
+    private lateinit var tileLabelsRow: TextView
+    private lateinit var appRingsRow: TextView
+    private lateinit var appLabelsRow: TextView
+    private lateinit var settingsBox: LinearLayout
+    private lateinit var settingsBtn: TextView
     private lateinit var notifyOffRow: TextView
     private lateinit var notifyOnRow: TextView
     private val ui = Handler(Looper.getMainLooper())
     private var busy = false
+    private var sidePx = 0
+    private var todayDial: DialView? = null
+
+    /** What the lists and the footer were built for: the day, the half-hour slot, the data and its error. */
+    private var shownSlot = ""
+
+    private fun slotKey(now: ZonedDateTime) =
+        "${now.toLocalDate()}#${Schedule.slotOf(now)}#${Store.fetchedAt(this)}#${Store.error(this)}"
 
     private val tick = object : Runnable {
         override fun run() {
-            render()
-            ui.postDelayed(this, 30_000)
+            // Between slot changes only the countdown in the header moves: don't rebuild the whole screen
+            if (slotKey(ZonedDateTime.now(Schedule.ZONE)) != shownSlot) render() else updateHead()
+            // The countdown is in whole minutes: wake up on the minute boundary instead of every 30 s
+            ui.postDelayed(this, 60_000L - System.currentTimeMillis() % 60_000L + 100L)
         }
     }
 
@@ -61,45 +77,82 @@ class MainActivity : Activity() {
 
         val w = resources.displayMetrics.widthPixels
         val side = (w * 0.15f).toInt()
+        sidePx = side
 
         head = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             minimumHeight = (w * 0.62f).toInt()
         }
-        lists = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        lists = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            clipChildren = false // the rings reach over the side padding of the column
+        }
         footer = label(11f, Palette.LABEL).apply { gravity = Gravity.CENTER }
         btn = pill(getString(R.string.refresh), Palette.GREEN, Palette.BG).apply { setOnClickListener { refreshNow() } }
         sourceRow = settingRow { pickSource() }
         queueRow = settingRow { pickQueue() }
         notifyOffRow = settingRow { onLeadRow(off = true) }
         notifyOnRow = settingRow { onLeadRow(off = false) }
-        maybeRow = label(13f, Palette.GREY)
-        maybeSwitch = Switch(this).apply {
-            isClickable = false // the whole row handles the click
-            isFocusable = false
-            val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
-            thumbTintList = android.content.res.ColorStateList(states, intArrayOf(Palette.AMBER, Palette.GREY))
-            trackTintList = android.content.res.ColorStateList(states, intArrayOf(Palette.AMBER_DIM, Palette.LABEL))
+        yellow = switchRow {
+            Settings.setMaybeIsOff(this, !Settings.maybeIsOff(this))
+            Fetcher.notifyAll(this)
+            render()
         }
-        maybeCard = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(14f).toInt(), dp(8f).toInt(), dp(8f).toInt(), dp(8f).toInt())
-            background = GradientDrawable().apply {
-                cornerRadius = dp(18f)
-                setColor(Palette.CARD)
-            }
-            addView(maybeRow, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
-            addView(maybeSwitch)
-            setOnClickListener {
-                Settings.setMaybeIsOff(this@MainActivity, !Settings.maybeIsOff(this@MainActivity))
-                Fetcher.notifyAll(this@MainActivity)
-                render()
-            }
+        tileNext = switchRow {
+            Settings.setTileShowNext(this, !Settings.tileShowNext(this))
+            Fetcher.notifyAll(this) // redraw the tile right away
+            render()
+        }
+        notifyToday = switchRow {
+            val on = !Settings.notifyTodayChanged(this)
+            Settings.setNotifyTodayChanged(this, on)
+            if (on) askNotificationPermission()
+            render()
+        }
+        notifyTomorrow = switchRow {
+            val on = !Settings.notifyTomorrowNew(this)
+            Settings.setNotifyTomorrowNew(this, on)
+            if (on) askNotificationPermission()
+            render()
+        }
+
+        quietRow = settingRow { pickQuiet() }
+        tileRow = settingRow { pickTileRings() }
+        tileLabelsRow = settingRow { pickTileLabels() }
+        appRingsRow = settingRow { pickAppRings() }
+        appLabelsRow = settingRow { pickAppLabels() }
+
+        settingsBtn = settingRow { toggleSettings() }.apply { gravity = Gravity.CENTER }
+        settingsBox = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            setPadding(0, dp(8f).toInt(), 0, 0)
+            val gap = dp(6f).toInt()
+            fun add(v: View, last: Boolean = false) =
+                addView(v, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { if (!last) bottomMargin = gap })
+            add(sourceRow)
+            add(queueRow)
+            add(yellow.card)
+            add(tileRow)
+            add(tileLabelsRow)
+            add(tileNext.card)
+            add(appRingsRow)
+            add(appLabelsRow)
+            addView(label(13f, Palette.WHITE, bold = true).apply {
+                text = getString(R.string.notifications)
+                setPadding(0, dp(12f).toInt(), 0, dp(4f).toInt())
+            })
+            add(notifyOffRow)
+            add(notifyOnRow)
+            add(notifyToday.card)
+            add(notifyTomorrow.card)
+            add(quietRow, last = true)
         }
 
         val col = LinearLayout(this).apply {
+            clipChildren = false
+            clipToPadding = false // the rings reach over the side padding
             orientation = LinearLayout.VERTICAL
             setPadding(side, (w * 0.12f).toInt(), side, (w * 0.22f).toInt())
             addView(head, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
@@ -110,25 +163,11 @@ class MainActivity : Activity() {
             addView(btn, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
                 topMargin = dp(8f).toInt()
             })
-            addView(label(13f, Palette.WHITE, bold = true).apply {
-                text = getString(R.string.settings)
-                setPadding(0, dp(18f).toInt(), 0, dp(4f).toInt())
+            // The settings are hidden behind a button: most of the time the screen is for reading the schedule.
+            addView(settingsBtn, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+                topMargin = dp(14f).toInt()
             })
-            addView(sourceRow, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
-                bottomMargin = dp(6f).toInt()
-            })
-            addView(queueRow, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
-                bottomMargin = dp(6f).toInt()
-            })
-            addView(maybeCard, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
-            addView(label(13f, Palette.WHITE, bold = true).apply {
-                text = getString(R.string.notifications)
-                setPadding(0, dp(18f).toInt(), 0, dp(4f).toInt())
-            })
-            addView(notifyOffRow, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
-                bottomMargin = dp(6f).toInt()
-            })
-            addView(notifyOnRow, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+            addView(settingsBox, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
         }
         scroll = ScrollView(this).apply {
             isFocusable = true
@@ -143,6 +182,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        shownSlot = "" // the data may have changed while the screen was off: rebuild everything once
         ui.post(tick)
     }
 
@@ -243,6 +283,111 @@ class MainActivity : Activity() {
             .show()
     }
 
+    private fun toggleSettings() {
+        val open = settingsBox.visibility != View.VISIBLE
+        settingsBox.visibility = if (open) View.VISIBLE else View.GONE
+        settingsBtn.text = getString(
+            if (open) R.string.settings_expanded else R.string.settings_collapsed, getString(R.string.settings)
+        )
+        // bring the opened settings under the thumb
+        if (open) scroll.post { scroll.smoothScrollTo(0, settingsBtn.top - dp(10f).toInt()) }
+    }
+
+    /** How the day is drawn on the tile: one ring of 24 hours or two rings of 12 hours. */
+    private fun pickTileRings() {
+        val items = arrayOf(getString(R.string.tile_rings_one), getString(R.string.tile_rings_two))
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.tile_rings_title))
+            .setSingleChoiceItems(items, Settings.tileRings(this) - 1) { d, i ->
+                d.dismiss()
+                Settings.setTileRings(this, i + 1)
+                Fetcher.notifyAll(this) // redraw the tile (and the complication) right away
+                render()
+            }
+            .show()
+    }
+
+    /** With two rings: label the hours only outside (0-12) or inside the inner ring as well (12-24). */
+    private fun pickTileLabels() {
+        val items = arrayOf(getString(R.string.tile_labels_outer), getString(R.string.tile_labels_both))
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.tile_labels_title))
+            .setSingleChoiceItems(items, if (Settings.tileInnerLabels(this)) 1 else 0) { d, i ->
+                d.dismiss()
+                Settings.setTileInnerLabels(this, i == 1)
+                Fetcher.notifyAll(this)
+                render()
+            }
+            .show()
+    }
+
+    /** The same choice for the day dials in the app; it does not touch the tile. */
+    private fun pickAppRings() {
+        val items = arrayOf(getString(R.string.tile_rings_one), getString(R.string.tile_rings_two))
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.app_rings_title))
+            .setSingleChoiceItems(items, Settings.appRings(this) - 1) { d, i ->
+                d.dismiss()
+                Settings.setAppRings(this, i + 1)
+                render()
+            }
+            .show()
+    }
+
+    private fun pickAppLabels() {
+        val items = arrayOf(getString(R.string.tile_labels_outer), getString(R.string.tile_labels_both))
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.app_labels_title))
+            .setSingleChoiceItems(items, if (Settings.appInnerLabels(this)) 1 else 0) { d, i ->
+                d.dismiss()
+                Settings.setAppInnerLabels(this, i == 1)
+                render()
+            }
+            .show()
+    }
+
+    /** Quiet hours: off, a ready-made window, or "Custom…" (the start hour, then the end hour). */
+    private fun pickQuiet() {
+        val from = Settings.quietFrom(this)
+        val to = Settings.quietTo(this)
+        val presets = QuietHours.PRESETS
+        val items = listOf(getString(R.string.quiet_off)) +
+            presets.map { (f, t) -> getString(R.string.time_range, hourLabel(f), hourLabel(t)) } +
+            getString(R.string.quiet_custom)
+        val current = when {
+            !QuietHours.enabled(from, to) -> 0
+            else -> presets.indexOf(from to to).let { if (it >= 0) it + 1 else items.lastIndex }
+        }
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.quiet_hours))
+            .setSingleChoiceItems(items.toTypedArray(), current) { d, i ->
+                d.dismiss()
+                when (i) {
+                    0 -> setQuiet(0, 0)
+                    items.lastIndex -> pickHour(R.string.quiet_from, from) { f ->
+                        pickHour(R.string.quiet_to, to) { t -> setQuiet(f, t) }
+                    }
+                    else -> presets[i - 1].let { (f, t) -> setQuiet(f, t) }
+                }
+            }
+            .show()
+    }
+
+    private fun setQuiet(from: Int, to: Int) {
+        Settings.setQuiet(this, from, to)
+        render()
+    }
+
+    private fun pickHour(@androidx.annotation.StringRes title: Int, current: Int, onPicked: (Int) -> Unit) {
+        AlertDialog.Builder(this)
+            .setTitle(getString(title))
+            .setSingleChoiceItems((0..23).map { hourLabel(it) }.toTypedArray(), current) { d, i ->
+                d.dismiss()
+                onPicked(i)
+            }
+            .show()
+    }
+
     private fun applySettings(change: () -> Unit) {
         val before = Settings.source(this) to Settings.queue(this)
         change()
@@ -263,16 +408,28 @@ class MainActivity : Activity() {
         scroll.post { scroll.scrollTo(0, y) }
     }
 
-    private fun renderContent() {
+    /** Only the header (state and countdown): cheap, runs every minute. */
+    private fun updateHead() {
         val days = Store.load(this, Settings.maybeIsOff(this))
         val maybe = Store.loadMaybe(this)
         val now = ZonedDateTime.now(Schedule.ZONE)
         renderHead(Schedule.status(days, now), now, Schedule.at(maybe, now) == true)
+        todayDial?.setNow(now.hour * 60 + now.minute) // the "now" mark of today's ring
+    }
+
+    private fun renderContent() {
+        val days = Store.load(this, Settings.maybeIsOff(this))
+        val maybe = Store.loadMaybe(this)
+        val now = ZonedDateTime.now(Schedule.ZONE)
+        shownSlot = slotKey(now)
+        renderHead(Schedule.status(days, now), now, Schedule.at(maybe, now) == true)
 
         lists.removeAllViews()
+        todayDial = null
         val today = now.toLocalDate()
-        dayBlock(getString(R.string.today), days[today], maybe[today], Schedule.slotOf(now))
-        dayBlock(getString(R.string.tomorrow), days[today.plusDays(1)], maybe[today.plusDays(1)], -1)
+        val tomorrow = today.plusDays(1)
+        dayBlock(R.string.today, today, days[today], maybe[today], Schedule.slotOf(now), now.hour * 60 + now.minute)
+        dayBlock(R.string.tomorrow, tomorrow, days[tomorrow], maybe[tomorrow], -1, -1)
         if (maybe.values.any { m -> m.any { it } }) {
             lists.addView(label(11f, Palette.LABEL).apply {
                 text = getString(R.string.yellow_hint)
@@ -308,9 +465,51 @@ class MainActivity : Activity() {
             row.setTextColor(if (warn) Palette.AMBER else Palette.GREY)
         }
         val maybeOff = Settings.maybeIsOff(this)
-        maybeRow.text = getString(if (maybeOff) R.string.yellow_is_off else R.string.yellow_is_on)
-        maybeSwitch.isChecked = maybeOff
+        yellow.label.text = getString(if (maybeOff) R.string.yellow_as_outage else R.string.yellow_as_power)
+        yellow.sw.isChecked = maybeOff
+
+        tileNext.label.text = getString(R.string.tile_next_title)
+        tileNext.sw.isChecked = Settings.tileShowNext(this)
+
+        for ((row, title, on) in listOf(
+            Triple(notifyToday, getString(R.string.notify_setting_today), Settings.notifyTodayChanged(this)),
+            Triple(notifyTomorrow, getString(R.string.notify_setting_tomorrow), Settings.notifyTomorrowNew(this)),
+        )) {
+            val warn = blocked && on
+            row.label.text = if (warn) getString(R.string.two_lines, title, getString(R.string.notifications_blocked))
+            else title
+            row.label.setTextColor(if (warn) Palette.AMBER else Palette.GREY)
+            row.sw.isChecked = on
+        }
+
+        settingsBtn.text = getString(
+            if (settingsBox.visibility == View.VISIBLE) R.string.settings_expanded else R.string.settings_collapsed,
+            getString(R.string.settings)
+        )
+        tileRow.text = getString(
+            R.string.two_lines, getString(R.string.tile_rings_title),
+            getString(if (Settings.tileRings(this) == 2) R.string.tile_rings_two else R.string.tile_rings_one)
+        )
+        tileLabelsRow.text = getString(
+            R.string.two_lines, getString(R.string.tile_labels_title),
+            getString(if (Settings.tileInnerLabels(this)) R.string.tile_labels_both else R.string.tile_labels_outer)
+        )
+        appRingsRow.text = getString(
+            R.string.two_lines, getString(R.string.app_rings_title),
+            getString(if (Settings.appRings(this) == 2) R.string.tile_rings_two else R.string.tile_rings_one)
+        )
+        appLabelsRow.text = getString(
+            R.string.two_lines, getString(R.string.app_labels_title),
+            getString(if (Settings.appInnerLabels(this)) R.string.tile_labels_both else R.string.tile_labels_outer)
+        )
+        quietRow.text = getString(R.string.two_lines, getString(R.string.quiet_hours), quietLabel(Settings.quietFrom(this), Settings.quietTo(this)))
     }
+
+    private fun hourLabel(h: Int) = "%02d:00".format(h)
+
+    private fun quietLabel(from: Int, to: Int) =
+        if (!QuietHours.enabled(from, to)) getString(R.string.quiet_off)
+        else getString(R.string.time_range, hourLabel(from), hourLabel(to))
 
     private fun renderHead(st: Schedule.Status?, now: ZonedDateTime, switching: Boolean) {
         head.removeAllViews()
@@ -359,35 +558,50 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun dayBlock(title: String, flags: BooleanArray?, maybe: BooleanArray?, curSlot: Int) {
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(14f).toInt(), 0, dp(6f).toInt())
-        }
-        row.addView(label(14f, Palette.WHITE, bold = true).apply { text = title; maxLines = 1 },
-            LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT))
-        row.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
-        row.addView(label(12f, Palette.LABEL).apply {
-            text = when {
-                flags == null -> ""
-                flags.none { it } -> getString(R.string.no_outages)
-                else -> getString(R.string.minus, Fmt.duration(this@MainActivity, Schedule.offDuration(flags)))
+    /**
+     * One day: a screen-wide 24-hour ring with the day, its date and the total in the middle, then the list
+     * of outages. The days are told apart by the title in the ring and by a divider and a gap between them.
+     * [curSlot] and [nowMinute] are -1 for a day other than today (nothing is over, no "now" mark).
+     */
+    private fun dayBlock(
+        @androidx.annotation.StringRes titleRes: Int, date: java.time.LocalDate,
+        flags: BooleanArray?, maybe: BooleanArray?, curSlot: Int, nowMinute: Int,
+    ) {
+        val summary: String
+        val summaryColor: Int
+        when {
+            flags == null -> { summary = getString(R.string.no_schedule_yet); summaryColor = Palette.LABEL }
+            flags.none { it } -> { summary = getString(R.string.power_all_day); summaryColor = Palette.GREEN }
+            else -> {
+                summary = getString(R.string.minus, Fmt.duration(this, Schedule.offDuration(flags)))
+                summaryColor = Palette.RED
             }
-            if (flags != null && flags.any { it }) setTextColor(Palette.RED)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-        }, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { leftMargin = dp(6f).toInt() })
-        lists.addView(row)
-
-        if (flags == null) {
-            lists.addView(label(13f, Palette.LABEL).apply { text = getString(R.string.no_schedule_yet) })
-            return
         }
-        lists.addView(StripView(this, flags, maybe, curSlot), LinearLayout.LayoutParams(MATCH_PARENT, dp(10f).toInt()).apply {
-            bottomMargin = dp(6f).toInt()
+        val dial = DialView(
+            this,
+            DialData(
+                flags, maybe, curSlot, nowMinute, Settings.maybeIsOff(this),
+                date.format(DateTimeFormatter.ofPattern("d MMMM", java.util.Locale.getDefault())),
+                getString(titleRes), summary, summaryColor,
+                Settings.appRings(this), Settings.appInnerLabels(this)
+            )
+        )
+        if (curSlot >= 0) todayDial = dial
+
+        if (lists.childCount > 0) {
+            lists.addView(View(this).apply { setBackgroundColor(Palette.CARD) },
+                LinearLayout.LayoutParams(MATCH_PARENT, dp(2f).toInt()).apply {
+                    topMargin = dp(18f).toInt()
+                    bottomMargin = dp(10f).toInt()
+                })
+        }
+        // the ring fills the whole width of the round screen, so it reaches over the side padding of the column
+        lists.addView(dial, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+            leftMargin = -sidePx
+            rightMargin = -sidePx
         })
+
+        if (flags == null) return
         val ranges = Schedule.offRanges(flags)
         if (ranges.isEmpty()) lists.addView(label(13f, Palette.GREEN).apply { text = getString(R.string.power_all_day) })
         for ((a, b) in ranges) {
@@ -425,6 +639,31 @@ class MainActivity : Activity() {
         setOnClickListener { onClick() }
     }
 
+    /** A card with a text and a switch; the whole card is the click target, the switch only shows the state. */
+    private fun switchRow(onClick: () -> Unit): SwitchRow {
+        val text = label(13f, Palette.GREY)
+        val sw = Switch(this).apply {
+            isClickable = false
+            isFocusable = false
+            val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
+            thumbTintList = android.content.res.ColorStateList(states, intArrayOf(Palette.AMBER, Palette.GREY))
+            trackTintList = android.content.res.ColorStateList(states, intArrayOf(Palette.AMBER_DIM, Palette.LABEL))
+        }
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(14f).toInt(), dp(8f).toInt(), dp(8f).toInt(), dp(8f).toInt())
+            background = GradientDrawable().apply {
+                cornerRadius = dp(18f)
+                setColor(Palette.CARD)
+            }
+            addView(text, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
+            addView(sw)
+            setOnClickListener { onClick() }
+        }
+        return SwitchRow(text, sw, card)
+    }
+
     private fun pill(s: String, bg: Int, fg: Int, size: Float = 15f) = label(size, fg, bold = true).apply {
         text = s
         gravity = Gravity.CENTER
@@ -452,29 +691,4 @@ class MainActivity : Activity() {
     }
 }
 
-/** Horizontal strip of the day (48 slots of 30 min). */
-private class StripView(c: Context, val flags: BooleanArray, val maybe: BooleanArray?, val curSlot: Int) : View(c) {
-    private val p = Paint(Paint.ANTI_ALIAS_FLAG)
-    override fun onDraw(cv: Canvas) {
-        val n = flags.size
-        val gap = resources.displayMetrics.density * 0.75f
-        val cw = (width - gap * (n - 1)) / n
-        val r = cw / 2
-        for (i in 0 until n) {
-            val past = curSlot >= 0 && i < curSlot
-            val m = maybe?.getOrNull(i) == true
-            p.color = when {
-                m && past -> Palette.AMBER_DIM
-                m -> Palette.AMBER
-                flags[i] && past -> Palette.RED_DIM
-                flags[i] -> Palette.RED
-                past -> Palette.GREEN_DIM
-                else -> Palette.GREEN
-            }
-            val x = i * (cw + gap)
-            val top = if (i == curSlot) 0f else height * 0.2f
-            val bottom = if (i == curSlot) height.toFloat() else height * 0.8f
-            cv.drawRoundRect(x, top, x + cw, bottom, r, r, p)
-        }
-    }
-}
+private class SwitchRow(val label: TextView, val sw: Switch, val card: LinearLayout)

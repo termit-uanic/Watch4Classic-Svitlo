@@ -30,13 +30,16 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
 /**
- * Tile: queue, status and countdown in the centre, a strip of the next 12 hours.
+ * Tile: a 24-hour ring around the edge (see [TileRing]); queue, status and countdown in the centre.
  * Timeline: a layout per half hour (~3 h ahead); the countdown is dynamic text computed by the watch.
  */
 class LightTileService : TileService() {
     private var queue = ""
     private var maybe: Map<LocalDate, BooleanArray> = emptyMap()
     private var stale = false
+    private var rings = 1
+    private var innerLabels = true
+    private var showNext = true
 
     override fun onTileRequest(requestParams: RequestBuilders.TileRequest): ListenableFuture<TileBuilders.Tile> {
         Refresh.ifStale(this)
@@ -47,6 +50,9 @@ class LightTileService : TileService() {
         val err = Store.error(this)
         val fetched = Store.fetchedAt(this)
         queue = Settings.queue(this)
+        rings = Settings.tileRings(this)
+        innerLabels = Settings.tileInnerLabels(this)
+        showNext = Settings.tileShowNext(this)
         val start = ZonedDateTime.now(Schedule.ZONE).truncatedTo(ChronoUnit.MINUTES)
         // Half-hour slot boundaries: within a slot only the countdown changes, and the watch computes it.
         val firstBoundary = start.truncatedTo(ChronoUnit.HOURS).plusMinutes(if (start.minute >= 30) 60 else 30)
@@ -75,7 +81,7 @@ class LightTileService : TileService() {
         return Futures.immediateFuture(
             TileBuilders.Tile.Builder()
                 .setResourcesVersion(RES_VERSION)
-                .setFreshnessIntervalMillis(15 * 60_000L)
+                .setFreshnessIntervalMillis(FRESHNESS_MS)
                 .setTileTimeline(timeline.build())
                 .build()
         )
@@ -117,62 +123,34 @@ class LightTileService : TileService() {
                     )
                     .build()
             )
-            .addContent(center(st, days, now, err, fetched))
+            .apply { ring(days, now).forEach { addContent(it) } }
+            .addContent(center(st, now, err, fetched))
             .build()
     }
 
-    /** Strip of the next 12 hours (24 slots of 30 min). */
-    private fun strip(days: Map<LocalDate, BooleanArray>, now: ZonedDateTime): LayoutElement {
-        val row = Row.Builder().setVerticalAlignment(LayoutElementBuilders.VERTICAL_ALIGN_CENTER)
-        val m = Schedule.upcoming(maybe, now, STRIP_SLOTS)
-        Schedule.upcoming(days, now, STRIP_SLOTS).forEachIndexed { i, off ->
-            if (i > 0) row.addContent(Spacer.Builder().setWidth(dp(1f)).build())
-            val color = when {
-                m[i] == true -> AMBER
-                off == null -> NODATA
-                off -> RED
-                else -> GREEN
-            }
-            row.addContent(
-                Box.Builder()
-                    .setWidth(dp(5f))
-                    .setHeight(dp(if (i == 0) 13f else 9f))
-                    .setModifiers(
-                        ModifiersBuilders.Modifiers.Builder()
-                            .setBackground(
-                                ModifiersBuilders.Background.Builder()
-                                    .setColor(argb(color))
-                                    .setCorner(ModifiersBuilders.Corner.Builder().setRadius(dp(1.5f)).build())
-                                    .build()
-                            )
-                            .build()
-                    )
-                    .build()
-            )
-        }
-        val labels = Row.Builder()
-            .addContent(text(getString(R.string.now), 9f, LABEL))
-            .addContent(Spacer.Builder().setWidth(dp(80f)).build())
-            .addContent(text(getString(R.string.strip_plus_12h), 9f, LABEL))
-        return Column.Builder()
-            .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
-            .addContent(row.build())
-            .addContent(gap(2f))
-            .addContent(labels.build())
-            .build()
+    /**
+     * The day around the tile (one ring of 24 h or two of 12 h, by the setting): slots that are over are dark,
+     * yellow slots follow the "yellow slots" setting.
+     */
+    private fun ring(days: Map<LocalDate, BooleanArray>, now: ZonedDateTime): List<LayoutElement> {
+        val date = now.toLocalDate()
+        val minute = now.hour * 60 + now.minute
+        return TileRing.layers(
+            rings, days[date], maybe[date], Schedule.slotOf(now), Settings.maybeIsOff(this),
+            date, minute, DialModel.hourOf(minute), innerLabels
+        )
     }
 
     private fun center(
         st: Schedule.Status?,
-        days: Map<LocalDate, BooleanArray>,
         now: ZonedDateTime,
         err: String?,
         fetched: Long,
     ): LayoutElement {
         val col = Column.Builder()
             .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
-            .addContent(text(getString(R.string.queue_upper, queue), 12f, LABEL, bold = true))
-            .addContent(gap(6f))
+            .addContent(text(getString(R.string.queue_upper, queue), 11f, LABEL, bold = true))
+            .addContent(gap(3f))
 
         if (st == null) {
             col.addContent(text(getString(R.string.no_data_upper), 13f, GREY, bold = true))
@@ -191,7 +169,7 @@ class LightTileService : TileService() {
             val title = getString(
                 when { switching -> R.string.state_switching_upper; st.off -> R.string.state_off_upper; else -> R.string.state_on_upper }
             )
-            col.addContent(text(title, 15f, color, bold = true))
+            col.addContent(text(title, 13f, color, bold = true))
                 .addContent(gap(2f))
                 .addContent(
                     countdown(st, now)
@@ -207,36 +185,38 @@ class LightTileService : TileService() {
                             },
                             hhmm(st.changeAt)
                         ),
-                        15f, GREY
+                        13f, GREY
                     )
                 )
-            st.nextLen?.let {
+            // how long the next phase lasts, as in the app: "then 1h without power" / "then 3h with power"
+            st.nextLen?.takeIf { showNext }?.let {
                 val len = (if (st.nextEndIsMinimum) "≥ " else "") + Fmt.duration(this, it)
-                col.addContent(gap(2f))
+                col.addContent(gap(1f))
                     .addContent(
-                        text(
-                            getString(if (st.off) R.string.next_with_power else R.string.next_without_power, len),
-                            13f, LABEL
-                        )
+                        text(getString(if (st.off) R.string.next_with_power else R.string.next_without_power, len), 12f, LABEL)
                     )
             }
-            col.addContent(gap(8f)).addContent(strip(days, now))
         }
 
         if (fetched > 0) {
             val t = java.time.Instant.ofEpochMilli(fetched).atZone(Schedule.ZONE)
-            col.addContent(gap(6f))
+            col.addContent(gap(3f))
                 .addContent(
                     if (err != null || stale) {
                         val from = if (t.toLocalDate() == now.toLocalDate()) hhmm(t) else t.format(DDHHMM)
-                        text(getString(R.string.tile_data_from, from), 12f, AMBER)
-                    } else text(getString(R.string.tile_updated, hhmm(t)), 12f, LABEL)
+                        text(getString(R.string.tile_data_from, from), 10f, AMBER)
+                    } else text(getString(R.string.tile_updated, hhmm(t)), 10f, LABEL)
                 )
         }
         return Box.Builder()
             .setWidth(expand()).setHeight(expand())
             .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
             .setVerticalAlignment(LayoutElementBuilders.VERTICAL_ALIGN_CENTER)
+            .setModifiers(
+                ModifiersBuilders.Modifiers.Builder()
+                    .setPadding(ModifiersBuilders.Padding.Builder().setAll(dp(TileRing.centerPaddingDp(rings, innerLabels))).build())
+                    .build()
+            )
             .addContent(col.build())
             .build()
     }
@@ -274,7 +254,7 @@ class LightTileService : TileService() {
             .setMaxLines(1)
             .setFontStyle(
                 FontStyle.Builder()
-                    .setSize(sp(37f))
+                    .setSize(sp(TileRing.countdownSp(rings, innerLabels)))
                     .setColor(argb(WHITE))
                     .setWeight(LayoutElementBuilders.FONT_WEIGHT_BOLD)
                     .build()
@@ -302,10 +282,14 @@ class LightTileService : TileService() {
             .build()
 
     private companion object {
-        const val RES_VERSION = "3"
-        const val STRIP_SLOTS = 24
-        /** Half-hour layouts ahead (~3 h); the tile is re-requested every 15 min anyway. */
-        const val TIMELINE_SLOTS = 6
+        const val RES_VERSION = "4"
+        /**
+         * Half-hour layouts ahead (~6 h). A layout per slot is needed because the strip shifts every 30 min,
+         * so a longer timeline means fewer tile rebuilds; real changes of the data call requestUpdate().
+         */
+        const val TIMELINE_SLOTS = 12
+        /** The system re-requests the tile at most this often (it only has to outlive the data refresh job). */
+        const val FRESHNESS_MS = 60 * 60_000L
         val DDHHMM: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM HH:mm")
         val HHMM: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
