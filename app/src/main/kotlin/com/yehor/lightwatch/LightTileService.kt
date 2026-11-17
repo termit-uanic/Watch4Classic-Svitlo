@@ -236,16 +236,16 @@ class LightTileService : TileService() {
         val unitH = getString(R.string.unit_h)
         val unitM = getString(R.string.unit_m)
         val dyn = c(pre).concat(
-            DynamicString.onCondition(h.gt(0))
+            DynamicString.onCondition(h.gte(1))
                 .use(
-                    DynamicString.onCondition(m.eq(0))
+                    DynamicString.onCondition(m.lt(1))
                         .use(h.format().concat(c(unitH)))
                         .elseUse(h.format().concat(c("$unitH ")).concat(m.format()).concat(c(unitM)))
                 )
                 .elseUse(m.format().concat(c(unitM)))
         )
         val fallback = pre + Fmt.duration(this, st.remaining(now).plusSeconds(59))
-        return Text.Builder()
+        val text = Text.Builder()
             .setText(TypeBuilders.StringProp.Builder(fallback).setDynamicValue(dyn).build())
             .setLayoutConstraintsForDynamicText(
                 TypeBuilders.StringLayoutConstraint.Builder("≥ " + getString(R.string.duration_hm, 23, 59))
@@ -261,6 +261,7 @@ class LightTileService : TileService() {
                     .build()
             )
             .build()
+        return LayoutElementBuilders.Column.Builder().addContent(text).build()
     }
 
     private fun hhmm(t: ZonedDateTime): String =
