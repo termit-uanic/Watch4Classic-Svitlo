@@ -1,5 +1,6 @@
 package com.yehor.lightwatch
 
+import com.yehor.lightwatch.core.R
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context

@@ -1,5 +1,6 @@
 package com.yehor.lightwatch
 
+import com.yehor.lightwatch.core.R
 import android.content.Context
 import java.time.Duration
 

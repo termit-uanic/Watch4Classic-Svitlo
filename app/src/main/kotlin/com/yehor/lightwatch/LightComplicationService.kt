@@ -1,5 +1,6 @@
 package com.yehor.lightwatch
 
+import com.yehor.lightwatch.core.R
 import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context

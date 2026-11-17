@@ -1,8 +1,8 @@
 package com.yehor.lightwatch
 
+import com.yehor.lightwatch.core.R
 import android.app.job.JobScheduler
 import android.content.Context
-import androidx.wear.tiles.TileService
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -286,21 +286,16 @@ object Fetcher {
         val fetchedBefore = Store.fetchedAt(c)
         val ok = refresh(c)
         if (Store.snapshot(c) != before) notifyAll(c)
-        else if (Store.fetchedAt(c) != fetchedBefore) requestTileUpdate(c)
+        else if (Store.fetchedAt(c) != fetchedBefore) Surfaces.fetched(c)
         Notify.schedule(c)
         return ok
-    }
-
-    private fun requestTileUpdate(c: Context) {
-        TileService.getUpdater(c).requestUpdate(LightTileService::class.java)
     }
 
     fun notifyAll(c: Context) {
         // A BroadcastReceiver's own context may not bind to services, which the tile and complication update
         // requests do, so always go through the application context.
         val app = c.applicationContext
-        requestTileUpdate(app)
-        LightComplicationService.requestUpdate(app)
+        Surfaces.changed(app)
         Notify.schedule(app)
     }
 }

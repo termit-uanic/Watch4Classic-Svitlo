@@ -18,3 +18,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "lightwatch"
 include(":app")
+include(":core")

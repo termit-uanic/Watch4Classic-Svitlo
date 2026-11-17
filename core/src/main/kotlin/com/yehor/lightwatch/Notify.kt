@@ -1,5 +1,6 @@
 package com.yehor.lightwatch
 
+import com.yehor.lightwatch.core.R
 import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -206,7 +207,7 @@ object Notify {
     private fun showChange(c: Context, id: Int, title: String, text: String) {
         changesChannel(c)
         val open = PendingIntent.getActivity(
-            c, 0, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
+            c, 0, Surfaces.openIntent(c), PendingIntent.FLAG_IMMUTABLE
         )
         val n = android.app.Notification.Builder(c, channelFor(c, CHANNEL_CHANGES, ZonedDateTime.now(Schedule.ZONE)))
             .setSmallIcon(R.drawable.ic_bolt_mono)
@@ -239,7 +240,7 @@ object Notify {
         val text = if (min > 0) c.getString(R.string.notify_text_in, min, queue)
         else c.getString(R.string.notify_text_now, queue)
         val open = PendingIntent.getActivity(
-            c, 0, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
+            c, 0, Surfaces.openIntent(c), PendingIntent.FLAG_IMMUTABLE
         )
         val n = android.app.Notification.Builder(c, channelFor(c, CHANNEL, now))
             .setSmallIcon(if (off) R.drawable.ic_bolt_off_mono else R.drawable.ic_bolt_mono)
