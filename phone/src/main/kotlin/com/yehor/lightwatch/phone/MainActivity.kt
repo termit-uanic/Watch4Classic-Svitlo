@@ -220,7 +220,7 @@ class MainActivity : Activity() {
             setPadding(ui.dp(14f).toInt(), ui.dp(6f).toInt(), ui.dp(14f).toInt(), ui.dp(6f).toInt())
         }, 10f)
         add(ui.label(46f, Palette.WHITE, bold = true).apply {
-            val left = Fmt.duration(this@MainActivity, st.remaining(now))
+            val left = Fmt.duration(this@MainActivity, st.remaining(now).plusSeconds(59)) // round up, like the tile
             text = if (st.changeIsMinimum) getString(CoreR.string.at_least, left) else left
         }, 4f)
         add(ui.label(16f, Palette.GREY).apply {

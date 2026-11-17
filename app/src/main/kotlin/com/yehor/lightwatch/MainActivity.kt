@@ -537,7 +537,7 @@ class MainActivity : Activity() {
             setPadding(dp(10f).toInt(), dp(4f).toInt(), dp(10f).toInt(), dp(4f).toInt())
         }, 10f)
         add(label(34f, Palette.WHITE, bold = true).apply {
-            val left = Fmt.duration(this@MainActivity, st.remaining(now))
+            val left = Fmt.duration(this@MainActivity, st.remaining(now).plusSeconds(59)) // round up, like the tile
             text = if (st.changeIsMinimum) getString(R.string.at_least, left) else left
         }, 4f)
         val at = hhmm(st.changeAt, now)
