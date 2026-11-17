@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="data_title">Дані</string>
+    <string name="display_title">Відображення на цьому телефоні</string>
+    <string name="background_title">Робота у фоні</string>
+    <string name="background_hint">На деяких телефонах (Xiaomi, Huawei, Oppo…) система зупиняє застосунки у фоні. Дозвольте автозапуск і поставте для батареї «Без обмежень», інакше графік і нагадування можуть перестати оновлюватися.</string>
+    <string name="autostart_button">Автозапуск…</string>
+    <string name="battery_button">Витрата батареї…</string>
+</resources>

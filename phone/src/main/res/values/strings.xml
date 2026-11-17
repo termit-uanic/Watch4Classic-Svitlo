@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="data_title">Data</string>
+    <string name="display_title">Display on this phone</string>
+    <string name="background_title">Background work</string>
+    <string name="background_hint">Some phones (Xiaomi, Huawei, Oppo…) stop apps in the background. Allow autostart and set the battery usage to “No restrictions”, otherwise the schedule and the reminders may stop updating.</string>
+    <string name="autostart_button">Autostart…</string>
+    <string name="battery_button">Battery usage…</string>
+</resources>
