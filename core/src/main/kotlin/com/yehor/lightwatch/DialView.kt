@@ -40,8 +40,14 @@ class DialData(
 @SuppressLint("ViewConstructor") // only ever created from code, with its data
 class DialView(c: Context, private var data: DialData) : View(c) {
     private val density = resources.displayMetrics.density
-    private fun dp(v: Float) = v * density
-    private fun sp(v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, v, resources.displayMetrics)
+
+    /**
+     * Everything is sized for a watch screen ([REFERENCE_WIDTH_DP] wide); a wider view (a phone) scales all of it up
+     * so that the ring keeps its proportions. On the watch the factor is 1.
+     */
+    private var scale = 1f
+    private fun dp(v: Float) = v * density * scale
+    private fun sp(v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, v, resources.displayMetrics) * scale
 
     private val dash = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -80,6 +86,7 @@ class DialView(c: Context, private var data: DialData) : View(c) {
 
     override fun onDraw(cv: Canvas) {
         val size = width.toFloat()
+        scale = max(1f, width / density / REFERENCE_WIDTH_DP)
         val cx = size / 2
         val cy = size / 2
         val rings = data.rings
@@ -163,5 +170,9 @@ class DialView(c: Context, private var data: DialData) : View(c) {
         text.textSize = sp(16f) * k
         text.color = data.summaryColor
         cv.drawText(data.summary, cx, titleBase + titleSize * 1.05f, text)
+    }
+
+    private companion object {
+        const val REFERENCE_WIDTH_DP = 240f
     }
 }

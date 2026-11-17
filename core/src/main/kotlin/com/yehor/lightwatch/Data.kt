@@ -137,7 +137,9 @@ object Settings {
     fun setTileShowNext(c: Context, v: Boolean) { p(c).edit().putBoolean("tileShowNext", v).apply() }
 
     /** The same two settings for the day dials inside the app (kept apart from the tile's). */
-    fun appRings(c: Context): Int = if (p(c).getInt("appRings", 1) == 2) 2 else 1
+    /** The number of rings until the user picks one: the watch starts with 1, the phone app sets 2 at start. */
+    @Volatile var appRingsDefault = 1
+    fun appRings(c: Context): Int = if (p(c).getInt("appRings", appRingsDefault) == 2) 2 else 1
     fun setAppRings(c: Context, rings: Int) { p(c).edit().putInt("appRings", if (rings == 2) 2 else 1).apply() }
     fun appInnerLabels(c: Context): Boolean = p(c).getBoolean("appInnerLabels", true)
     fun setAppInnerLabels(c: Context, v: Boolean) { p(c).edit().putBoolean("appInnerLabels", v).apply() }
