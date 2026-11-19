@@ -78,6 +78,8 @@ def masked(im, shape):
 if __name__ == '__main__':
     colour_icon(512).save('store/ic_launcher_512.png')  # Google Play wants a square 512x512 without a mask
     print('store/ic_launcher_512.png')
+    masked(colour_icon(256), 'circle').save('store/icon_round.png')  # transparent corners, for the README
+    print('store/icon_round.png')
     if len(sys.argv) == 3 and sys.argv[1] == '--previews':
         out = sys.argv[2]
         row = Image.new('RGB', (4 * 232, 232), (236, 237, 240))
