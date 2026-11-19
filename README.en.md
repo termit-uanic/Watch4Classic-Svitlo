@@ -22,6 +22,32 @@ The app has two parts that work together and on their own:
 
 > **Status: beta (1.0.0-beta).** The app is not on Google Play yet; it is installed from a computer (see "Installation").
 
+## Screenshots
+
+**Phone**: "Now", "Queues", "Settings":
+
+<p>
+  <img src="docs/screenshots/phone-now.png" width="230" alt="The Now screen: the state, the countdown and the day ring">
+  <img src="docs/screenshots/phone-queues.png" width="230" alt="The Queues tab: the state of several queues at once">
+  <img src="docs/screenshots/phone-settings.png" width="230" alt="Settings in cards, including how the app looks on the watch">
+</p>
+
+**Widgets**: the state, the state with a ring, today and tomorrow:
+
+<p>
+  <img src="docs/screenshots/phone-widgets.png" width="340" alt="The small widget and the widget with a ring">
+  <img src="docs/screenshots/phone-widget-large.png" width="340" alt="The large widget: today and tomorrow">
+</p>
+
+**Watch**: the tile and the app:
+
+<p>
+  <img src="docs/screenshots/watch-tile.png" width="230" alt="The tile on the watch: the day ring, the state and the countdown">
+  <img src="docs/screenshots/watch-app.png" width="230" alt="The app on the watch">
+</p>
+
+The screenshots were taken on emulators (a Pixel 8 with Android 14 and a Wear OS watch).
+
 ## Features
 
 **Watch**

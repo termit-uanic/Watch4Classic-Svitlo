@@ -22,6 +22,32 @@
 
 > **Статус: бета (1.0.0-beta).** У Google Play застосунку ще немає, ставиться з комп'ютера (див. «Встановлення»).
 
+## Скріншоти
+
+**Телефон** — «Зараз», «Черги», «Налаштування»:
+
+<p>
+  <img src="docs/screenshots/phone-now.png" width="230" alt="Екран «Зараз»: стан, відлік і кільце доби">
+  <img src="docs/screenshots/phone-queues.png" width="230" alt="Вкладка «Черги»: стан кількох черг одразу">
+  <img src="docs/screenshots/phone-settings.png" width="230" alt="Налаштування у картках, зокрема вигляд на годиннику">
+</p>
+
+**Віджети** — стан, стан із кільцем, сьогодні й завтра:
+
+<p>
+  <img src="docs/screenshots/phone-widgets.png" width="340" alt="Малий віджет і віджет із кільцем">
+  <img src="docs/screenshots/phone-widget-large.png" width="340" alt="Великий віджет: сьогодні й завтра">
+</p>
+
+**Годинник** — тайл і застосунок:
+
+<p>
+  <img src="docs/screenshots/watch-tile.png" width="230" alt="Тайл на годиннику: кільце доби, стан і відлік">
+  <img src="docs/screenshots/watch-app.png" width="230" alt="Застосунок на годиннику">
+</p>
+
+Знімки зроблено на емуляторах (Pixel 8 з Android 14 і Wear OS).
+
 ## Що вміє
 
 **Годинник**
