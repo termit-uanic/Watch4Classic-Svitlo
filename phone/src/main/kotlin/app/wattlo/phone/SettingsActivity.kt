@@ -238,6 +238,7 @@ class SettingsActivity : Activity() {
             android.widget.EditText(this).apply {
                 setText(Settings.queueLabel(this@SettingsActivity, q))
                 hint = getString(R.string.queue_labels_hint)
+                setHintTextColor(Palette.LABEL) // clearly dimmer than the typed text
                 setSingleLine()
                 filters = arrayOf(android.text.InputFilter.LengthFilter(Settings.MAX_LABEL))
                 inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
