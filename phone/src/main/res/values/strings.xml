@@ -11,7 +11,7 @@
     <string name="queues_extra_none">none</string>
     <string name="queue_labels_title">Names of additional queues</string>
     <string name="queue_labels_none">not set</string>
-    <string name="queue_labels_hint">For example: parents, sister</string>
+    <string name="queue_labels_hint">For example: parents</string>
     <string name="queue_labels_add_first">Add additional queues first</string>
     <string name="tab_now">Now</string>
     <string name="tab_queues">Queues</string>

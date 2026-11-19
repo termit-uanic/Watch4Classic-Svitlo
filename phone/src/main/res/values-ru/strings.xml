@@ -11,7 +11,7 @@
     <string name="queues_extra_none">нет</string>
     <string name="queue_labels_title">Названия дополнительных очередей</string>
     <string name="queue_labels_none">не заданы</string>
-    <string name="queue_labels_hint">Например: родители, сестра</string>
+    <string name="queue_labels_hint">Например: родители</string>
     <string name="queue_labels_add_first">Сначала добавьте дополнительные очереди</string>
     <string name="tab_now">Сейчас</string>
     <string name="tab_queues">Очереди</string>
