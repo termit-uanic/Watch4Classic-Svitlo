@@ -210,7 +210,7 @@ object Notify {
             c, 0, Surfaces.openIntent(c), PendingIntent.FLAG_IMMUTABLE
         )
         val n = android.app.Notification.Builder(c, channelFor(c, CHANNEL_CHANGES, ZonedDateTime.now(Schedule.ZONE)))
-            .setSmallIcon(R.drawable.ic_bolt_mono)
+            .setSmallIcon(R.drawable.ic_bulb_mono)
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(android.app.Notification.BigTextStyle().bigText(text))
@@ -218,7 +218,7 @@ object Notify {
             // an explicit button as well: on a watch a tap on the card body is easy to miss
             .addAction(
                 android.app.Notification.Action.Builder(
-                    android.graphics.drawable.Icon.createWithResource(c, R.drawable.ic_bolt_mono),
+                    android.graphics.drawable.Icon.createWithResource(c, R.drawable.ic_bulb_mono),
                     c.getString(R.string.notify_action_open), open
                 ).build()
             )
@@ -243,7 +243,7 @@ object Notify {
             c, 0, Surfaces.openIntent(c), PendingIntent.FLAG_IMMUTABLE
         )
         val n = android.app.Notification.Builder(c, channelFor(c, CHANNEL, now))
-            .setSmallIcon(if (off) R.drawable.ic_bolt_off_mono else R.drawable.ic_bolt_mono)
+            .setSmallIcon(if (off) R.drawable.ic_bulb_off_mono else R.drawable.ic_bulb_mono)
             .setContentTitle(title)
             .setContentText(text)
             .setContentIntent(open)

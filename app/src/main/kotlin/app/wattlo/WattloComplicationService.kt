@@ -179,7 +179,7 @@ class WattloComplicationService : SuspendingTimelineComplicationDataSourceServic
 
     private fun icon(off: Boolean): MonochromaticImage =
         MonochromaticImage.Builder(
-            Icon.createWithResource(this, if (off) R.drawable.ic_bolt_off_mono else R.drawable.ic_bolt_mono)
+            Icon.createWithResource(this, if (off) R.drawable.ic_bulb_off_mono else R.drawable.ic_bulb_mono)
         ).build()
 
     companion object {
