@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -16,7 +17,11 @@ import app.wattlo.Fetcher
 import app.wattlo.Notify
 import app.wattlo.Palette
 import app.wattlo.QuietHours
+import app.wattlo.Refresh
 import app.wattlo.Settings
+import app.wattlo.SettingsSync
+import app.wattlo.WatchInfo
+import app.wattlo.WatchState
 import app.wattlo.Source
 import app.wattlo.core.R as CoreR
 import kotlin.concurrent.thread
@@ -26,9 +31,24 @@ class SettingsActivity : Activity() {
     private val ui by lazy { Ui(this) }
     private lateinit var sourceRow: TextView
     private lateinit var queueRow: TextView
+    private lateinit var extraQueuesRow: TextView
     private lateinit var yellow: SwitchRow
     private lateinit var ringsRow: TextView
     private lateinit var labelsRow: TextView
+    private lateinit var tileRingsRow: TextView
+    private lateinit var tileLabelsRow: TextView
+    private lateinit var tileNext: SwitchRow
+    private lateinit var wearRingsRow: TextView
+    private lateinit var wearLabelsRow: TextView
+    private lateinit var watchHint: TextView
+    private lateinit var watchGroup: LinearLayout
+
+    /** What the Data Layer says about the watch; the last answer is remembered so the screen does not flicker. */
+    private var watchInfo: WatchInfo? = null
+    private val uiPrefs by lazy { getSharedPreferences("phone_ui", MODE_PRIVATE) }
+    private var watchReady: Boolean
+        get() = uiPrefs.getBoolean("watchReady", false)
+        set(v) { uiPrefs.edit().putBoolean("watchReady", v).apply() }
     private lateinit var notifyOffRow: TextView
     private lateinit var notifyOnRow: TextView
     private lateinit var notifyToday: SwitchRow
@@ -38,67 +58,105 @@ class SettingsActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        sourceRow = ui.settingRow { pickSource() }
-        queueRow = ui.settingRow { pickQueue() }
-        yellow = ui.switchRow {
+        sourceRow = ui.groupRow(R.drawable.ic_cloud) { pickSource() }
+        queueRow = ui.groupRow(R.drawable.ic_tab_queues) { pickQueue() }
+        extraQueuesRow = ui.groupRow(R.drawable.ic_add_circle) { pickExtraQueues() }
+        yellow = ui.switchRow(R.drawable.ic_warning) {
             Settings.setMaybeIsOff(this, !Settings.maybeIsOff(this))
             Fetcher.notifyAll(this)
             render()
         }
-        ringsRow = ui.settingRow { pickRings() }
-        labelsRow = ui.settingRow { pickLabels() }
-        notifyOffRow = ui.settingRow { onLeadRow(off = true) }
-        notifyOnRow = ui.settingRow { onLeadRow(off = false) }
-        notifyToday = ui.switchRow {
+        ringsRow = ui.groupRow(R.drawable.ic_ring) { pickRings() }
+        labelsRow = ui.groupRow(R.drawable.ic_text_size) { pickLabels() }
+        tileRingsRow = ui.groupRow(R.drawable.ic_ring, watchOnly {
+            pickOf(CoreR.string.tile_rings_title, rings(), Settings.tileRings(this) - 1) { Settings.setTileRings(this, it + 1) }
+        })
+        tileLabelsRow = ui.groupRow(R.drawable.ic_text_size, watchOnly {
+            pickOf(CoreR.string.tile_labels_title, labels(), if (Settings.tileInnerLabels(this)) 1 else 0) {
+                Settings.setTileInnerLabels(this, it == 1)
+            }
+        })
+        tileNext = ui.switchRow(R.drawable.ic_tab_now, watchOnly {
+            Settings.setTileShowNext(this, !Settings.tileShowNext(this))
+            render()
+        })
+        wearRingsRow = ui.groupRow(R.drawable.ic_ring, watchOnly {
+            pickOf(R.string.watch_app_rings_title, rings(), Settings.wearAppRings(this) - 1) { Settings.setWearAppRings(this, it + 1) }
+        })
+        wearLabelsRow = ui.groupRow(R.drawable.ic_text_size, watchOnly {
+            pickOf(R.string.watch_app_labels_title, labels(), if (Settings.wearAppInnerLabels(this)) 1 else 0) {
+                Settings.setWearAppInnerLabels(this, it == 1)
+            }
+        })
+        watchHint = ui.label(13f, Palette.AMBER).apply { setPadding(ui.dp(6f).toInt(), 0, ui.dp(6f).toInt(), ui.dp(8f).toInt()) }
+        notifyOffRow = ui.groupRow(R.drawable.ic_bell) { onLeadRow(off = true) }
+        notifyOnRow = ui.groupRow(R.drawable.ic_bell) { onLeadRow(off = false) }
+        notifyToday = ui.switchRow(R.drawable.ic_bell) {
             val on = !Settings.notifyTodayChanged(this)
             Settings.setNotifyTodayChanged(this, on)
             if (on) askNotificationPermission()
             render()
         }
-        notifyTomorrow = ui.switchRow {
+        notifyTomorrow = ui.switchRow(R.drawable.ic_bell) {
             val on = !Settings.notifyTomorrowNew(this)
             Settings.setNotifyTomorrowNew(this, on)
             if (on) askNotificationPermission()
             render()
         }
-        quietRow = ui.settingRow { pickQuiet() }
+        quietRow = ui.groupRow(R.drawable.ic_clock) { pickQuiet() }
 
         val pad = ui.dp(16f).toInt()
         val gap = 8f
         val column = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(pad, pad, pad, pad * 2)
-            addView(ui.label(22f, Palette.WHITE, bold = true).apply { text = getString(CoreR.string.settings) })
+            setPadding(pad, pad, pad, ui.dp(100f).toInt())
+            addView(ui.label(26f, Palette.WHITE, bold = true).apply { text = getString(CoreR.string.settings) })
 
             addView(ui.section(getString(R.string.data_title)))
-            addView(sourceRow, ui.lp())
-            addView(queueRow, ui.lp(gap))
-            addView(yellow.card, ui.lp(gap))
+            addView(ui.group(sourceRow, queueRow, extraQueuesRow, yellow.card), ui.lp())
 
             addView(ui.section(getString(R.string.display_title)))
-            addView(ringsRow, ui.lp())
-            addView(labelsRow, ui.lp(gap))
+            addView(ui.group(ringsRow, labelsRow), ui.lp())
+
+            addView(ui.section(getString(R.string.watch_display_title)))
+            addView(watchHint)
+            watchGroup = ui.group(tileRingsRow, tileLabelsRow, tileNext.card, wearRingsRow, wearLabelsRow)
+            addView(watchGroup, ui.lp())
 
             addView(ui.section(getString(CoreR.string.notifications)))
-            addView(notifyOffRow, ui.lp())
-            addView(notifyOnRow, ui.lp(gap))
-            addView(notifyToday.card, ui.lp(gap))
-            addView(notifyTomorrow.card, ui.lp(gap))
-            addView(quietRow, ui.lp(gap))
+            addView(ui.group(notifyOffRow, notifyOnRow, notifyToday.card, notifyTomorrow.card, quietRow), ui.lp())
 
             addView(ui.section(getString(R.string.background_title)))
-            addView(ui.label(13f, Palette.LABEL).apply { text = getString(R.string.background_hint) })
-            addView(ui.settingRow { openAutostart() }.apply { text = getString(R.string.autostart_button) }, ui.lp(10f))
-            addView(ui.settingRow { openBattery() }.apply { text = getString(R.string.battery_button) }, ui.lp(gap))
+            addView(ui.label(13f, Palette.LABEL).apply {
+                text = getString(R.string.background_hint)
+                setPadding(ui.dp(6f).toInt(), 0, ui.dp(6f).toInt(), 0)
+            })
+            addView(
+                ui.group(
+                    ui.groupRow(R.drawable.ic_play) { openAutostart() }.apply { text = getString(R.string.autostart_button) },
+                    ui.groupRow(R.drawable.ic_battery) { openBattery() }.apply { text = getString(R.string.battery_button) },
+                ),
+                ui.lp(10f)
+            )
         }
         val width = minOf(resources.displayMetrics.widthPixels, ui.dp(560f).toInt())
-        setContentView(ScrollView(this).apply {
+        setContentView(withTabs(ScrollView(this).apply {
             addView(column, FrameLayout.LayoutParams(width, WRAP_CONTENT, Gravity.CENTER_HORIZONTAL))
-        })
+        }, Tab.SETTINGS))
     }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() = openTab(Tab.NOW)
 
     override fun onResume() {
         super.onResume()
+        SettingsSync.watchInfo(this) { info ->
+            if (info != null) {
+                watchInfo = info
+                watchReady = info.state == WatchState.READY
+                render()
+            }
+        }
         render() // the permission or the battery mode may have changed in the system settings
     }
 
@@ -118,13 +176,33 @@ class SettingsActivity : Activity() {
     private fun pickQueue() {
         val all = Settings.QUEUES
         AlertDialog.Builder(this)
-            .setTitle(getString(CoreR.string.queue))
+            .setTitle(getString(R.string.queue_main_title))
             .setSingleChoiceItems(
                 all.map { getString(CoreR.string.queue_name, it) }.toTypedArray(), all.indexOf(Settings.queue(this))
             ) { d, i ->
                 d.dismiss()
                 applyDataSetting { Settings.set(this, queue = all[i]) }
             }
+            .show()
+    }
+
+    /** The extra queues the main screen can switch to; only the main one goes to the watch. */
+    private fun pickExtraQueues() {
+        val main = Settings.queue(this)
+        val all = Settings.QUEUES.filter { it != main }
+        val chosen = Settings.extraQueues(this).toMutableSet()
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.queues_extra_title))
+            .setMultiChoiceItems(
+                all.map { getString(CoreR.string.queue_name, it) }.toTypedArray(),
+                BooleanArray(all.size) { all[it] in chosen }
+            ) { _, i, on -> if (on) chosen += all[i] else chosen -= all[i] }
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                Settings.setExtraQueues(this, chosen)
+                render()
+                Refresh.now(this) // fetch the schedules of the new queues
+            }
+            .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
@@ -136,6 +214,57 @@ class SettingsActivity : Activity() {
         if (before == Settings.source(this) to Settings.queue(this)) return
         Fetcher.notifyAll(this)
         thread { Fetcher.refreshAndNotify(applicationContext) }
+    }
+
+    /** The settings of the watch need a watch with the app; otherwise a tap explains what to do. */
+    private fun watchOnly(action: () -> Unit): () -> Unit = { if (watchReady) action() else showWatchDialog() }
+
+    private fun showWatchDialog() {
+        val info = watchInfo
+        val b = AlertDialog.Builder(this)
+        if (info?.state == WatchState.NO_APP) {
+            b.setTitle(R.string.watch_noapp_title).setMessage(R.string.watch_noapp_message)
+                .setPositiveButton(R.string.watch_install) { _, _ -> installOnWatch(info.nodeIds) }
+                .setNegativeButton(android.R.string.cancel, null)
+        } else {
+            b.setTitle(R.string.watch_none_title).setMessage(R.string.watch_none_message)
+            companionIntent()?.let { i -> b.setPositiveButton(R.string.watch_open_companion) { _, _ -> tryStart(i) } }
+            b.setNegativeButton(android.R.string.cancel, null)
+        }
+        b.show()
+    }
+
+    /** The app that pairs and manages the watch (Wear OS by Google, or Galaxy Wearable on Samsung watches). */
+    private fun companionIntent(): Intent? =
+        listOf("com.google.android.wearable.app", "com.samsung.android.app.watchmanager")
+            .firstNotNullOfOrNull { packageManager.getLaunchIntentForPackage(it) }
+
+    /** Opens this app's page in Google Play on the watch (the watch app has the same package name). */
+    private fun installOnWatch(nodeIds: List<String>) {
+        val node = nodeIds.firstOrNull()
+        val ok = node != null && runCatching {
+            val page = Intent(Intent.ACTION_VIEW).addCategory(Intent.CATEGORY_BROWSABLE)
+                .setData(Uri.parse("market://details?id=$packageName"))
+            androidx.wear.remote.interactions.RemoteActivityHelper(this).startRemoteActivity(page, node)
+        }.isSuccess
+        android.widget.Toast.makeText(
+            this, if (ok) R.string.watch_install_started else R.string.watch_install_failed, android.widget.Toast.LENGTH_LONG
+        ).show()
+    }
+
+    private fun rings() = arrayOf(getString(CoreR.string.tile_rings_one), getString(CoreR.string.tile_rings_two))
+    private fun labels() = arrayOf(getString(CoreR.string.tile_labels_outer), getString(CoreR.string.tile_labels_both))
+
+    /** A single-choice dialog; [onPick] gets the index, then the screen is redrawn. */
+    private fun pickOf(title: Int, items: Array<String>, current: Int, onPick: (Int) -> Unit) {
+        AlertDialog.Builder(this)
+            .setTitle(getString(title))
+            .setSingleChoiceItems(items, current) { d, i ->
+                d.dismiss()
+                onPick(i)
+                render()
+            }
+            .show()
     }
 
     private fun pickRings() {
@@ -282,11 +411,17 @@ class SettingsActivity : Activity() {
 
     // ---------------------------------------------------------------- rendering
 
+    private fun Ui.two(title: Int, value: Int) = getString(CoreR.string.two_lines, getString(title), getString(value))
+
     private fun hourLabel(h: Int) = "%02d:00".format(h)
 
     private fun render() {
         sourceRow.text = getString(CoreR.string.two_lines, getString(CoreR.string.source), Settings.source(this).host)
-        queueRow.text = getString(CoreR.string.two_lines, getString(CoreR.string.queue), Settings.queue(this))
+        queueRow.text = getString(CoreR.string.two_lines, getString(R.string.queue_main_title), Settings.queue(this))
+        extraQueuesRow.text = getString(
+            CoreR.string.two_lines, getString(R.string.queues_extra_title),
+            Settings.extraQueues(this).joinToString(", ").ifEmpty { getString(R.string.queues_extra_none) }
+        )
         val maybeOff = Settings.maybeIsOff(this)
         yellow.label.text = getString(if (maybeOff) CoreR.string.yellow_as_outage else CoreR.string.yellow_as_power)
         yellow.sw.isChecked = maybeOff
@@ -299,6 +434,18 @@ class SettingsActivity : Activity() {
             CoreR.string.two_lines, getString(CoreR.string.app_labels_title),
             getString(if (Settings.appInnerLabels(this)) CoreR.string.tile_labels_both else CoreR.string.tile_labels_outer)
         )
+
+        tileRingsRow.text = ui.two(CoreR.string.tile_rings_title, if (Settings.tileRings(this) == 2) CoreR.string.tile_rings_two else CoreR.string.tile_rings_one)
+        tileLabelsRow.text = ui.two(CoreR.string.tile_labels_title, if (Settings.tileInnerLabels(this)) CoreR.string.tile_labels_both else CoreR.string.tile_labels_outer)
+        tileNext.label.text = getString(CoreR.string.tile_next_title)
+        tileNext.sw.isChecked = Settings.tileShowNext(this)
+        wearRingsRow.text = ui.two(R.string.watch_app_rings_title, if (Settings.wearAppRings(this) == 2) CoreR.string.tile_rings_two else CoreR.string.tile_rings_one)
+        wearLabelsRow.text = ui.two(R.string.watch_app_labels_title, if (Settings.wearAppInnerLabels(this)) CoreR.string.tile_labels_both else CoreR.string.tile_labels_outer)
+
+        val ready = watchReady
+        watchGroup.alpha = if (ready) 1f else 0.45f
+        watchHint.visibility = if (ready) View.GONE else View.VISIBLE
+        watchHint.text = getString(if (watchInfo?.state == WatchState.NO_APP) R.string.watch_hint_no_app else R.string.watch_hint_none)
 
         val blocked = !Notify.enabled(this)
         for ((row, title, lead) in listOf(

@@ -34,5 +34,7 @@ android {
 
 dependencies {
     implementation(project(":core"))
+    // opens Google Play on the watch to install the app there (RemoteActivityHelper)
+    implementation("androidx.wear:wear-remote-interactions:1.1.0")
     testImplementation("junit:junit:4.13.2")
 }
