@@ -9,6 +9,10 @@
     <string name="queue_main_title">Основная очередь (часы, виджеты, напоминания)</string>
     <string name="queues_extra_title">Дополнительные очереди (только на этом телефоне)</string>
     <string name="queues_extra_none">нет</string>
+    <string name="queue_labels_title">Названия дополнительных очередей</string>
+    <string name="queue_labels_none">не заданы</string>
+    <string name="queue_labels_hint">Например: родители, сестра</string>
+    <string name="queue_labels_add_first">Сначала добавьте дополнительные очереди</string>
     <string name="tab_now">Сейчас</string>
     <string name="tab_queues">Очереди</string>
     <string name="queues_title">Очереди</string>

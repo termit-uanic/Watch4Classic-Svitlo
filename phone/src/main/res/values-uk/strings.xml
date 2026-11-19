@@ -9,6 +9,10 @@
     <string name="queue_main_title">Основна черга (годинник, віджети, нагадування)</string>
     <string name="queues_extra_title">Додаткові черги (лише на цьому телефоні)</string>
     <string name="queues_extra_none">немає</string>
+    <string name="queue_labels_title">Назви додаткових черг</string>
+    <string name="queue_labels_none">не задано</string>
+    <string name="queue_labels_hint">Наприклад: батьки, сестра</string>
+    <string name="queue_labels_add_first">Спочатку додайте додаткові черги</string>
     <string name="tab_now">Зараз</string>
     <string name="tab_queues">Черги</string>
     <string name="queues_title">Черги</string>

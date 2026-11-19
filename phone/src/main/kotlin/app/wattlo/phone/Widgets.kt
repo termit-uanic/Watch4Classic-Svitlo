@@ -168,7 +168,8 @@ object Widgets {
             when { st == null -> CoreR.string.no_data; switching -> R.string.widget_state_switching; st.off -> R.string.widget_state_off; else -> R.string.widget_state_on }
         )
 
-        val queue: String = c.getString(CoreR.string.queue_upper, q ?: Settings.queue(c))
+        val queue: String = c.getString(CoreR.string.queue_upper, q ?: Settings.queue(c)) +
+            (q?.let { Settings.queueLabel(c, it) }?.takeIf { it.isNotEmpty() }?.let { " · " + it.uppercase() } ?: "")
 
         /** "1h 23m", rounded up like everywhere else; "≥ 1h 23m" when the data ends before the change. */
         val countdown: String = st?.let {

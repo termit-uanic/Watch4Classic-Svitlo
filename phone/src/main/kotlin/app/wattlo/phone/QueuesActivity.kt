@@ -107,8 +107,14 @@ class QueuesActivity : Activity() {
             addView(LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 addView(ui.label(26f, Palette.WHITE, bold = true).apply { text = name })
-                if (isMain) addView(ui.label(11f, Palette.LABEL).apply { text = getString(R.string.queue_main_tag) })
-            }, LinearLayout.LayoutParams(ui.dp(84f).toInt(), WRAP_CONTENT))
+                // the main queue says so; an extra one shows the name the user gave it
+                val tag = if (isMain) getString(R.string.queue_main_tag) else extra?.let { Settings.queueLabel(this@QueuesActivity, it) }.orEmpty()
+                if (tag.isNotEmpty()) addView(ui.label(11f, Palette.LABEL).apply {
+                    text = tag
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                })
+            }, LinearLayout.LayoutParams(ui.dp(96f).toInt(), WRAP_CONTENT))
             addView(LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 addView(ui.label(12f, color, bold = true).apply { text = getString(state); letterSpacing = 0.08f })

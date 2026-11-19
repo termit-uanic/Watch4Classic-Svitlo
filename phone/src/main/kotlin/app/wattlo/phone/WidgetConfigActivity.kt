@@ -101,12 +101,18 @@ class WidgetConfigActivity : Activity() {
         render()
     }
 
+    /** "Queue 1.1", with the name the user gave an extra queue ("Queue 1.1 — parents"). */
+    private fun named(q: String): String {
+        val label = Settings.queueLabel(this, q)
+        return getString(CoreR.string.queue_name, q) + if (label.isEmpty()) "" else " — $label"
+    }
+
     private fun pickQueue() {
         val main = Settings.queue(this)
         val all = listOf<String?>(null) + Settings.extraQueues(this)
         val labels = all.map { q ->
             if (q == null) getString(R.string.widget_queue_main, getString(CoreR.string.queue_name, main))
-            else getString(CoreR.string.queue_name, q)
+            else named(q)
         }.toTypedArray()
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.widget_config_queue))
@@ -178,8 +184,7 @@ class WidgetConfigActivity : Activity() {
         val main = Settings.queue(this)
         queueRow.text = getString(
             CoreR.string.two_lines, getString(R.string.widget_config_queue),
-            if (queue == null) getString(R.string.widget_queue_main, getString(CoreR.string.queue_name, main))
-            else getString(CoreR.string.queue_name, queue)
+            queue.let { q -> if (q == null) getString(R.string.widget_queue_main, getString(CoreR.string.queue_name, main)) else named(q) }
         )
         // a transparent widget has no background to fade
         val fades = bg != Widgets.BG_CLEAR

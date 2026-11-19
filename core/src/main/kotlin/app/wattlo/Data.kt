@@ -220,6 +220,17 @@ object Settings {
         (old - new.toSet()).forEach { Store.clear(c, it) } // no cache for a queue that is no longer shown
     }
 
+    const val MAX_LABEL = 16
+
+    /** A short name of an extra queue ("parents", "sister"), for the phone app only like the extra queues; "" when none. */
+    fun queueLabel(c: Context, q: String): String = p(c).getString("label_$q", "").orEmpty()
+
+    fun setQueueLabel(c: Context, q: String, label: String) {
+        if (q !in QUEUES) return
+        val clean = label.trim().take(MAX_LABEL)
+        p(c).edit().apply { if (clean.isEmpty()) remove("label_$q") else putString("label_$q", clean) }.apply()
+    }
+
     private fun writeExtras(c: Context, list: List<String>) {
         p(c).edit().putString("extraQueues", list.joinToString(",")).apply()
     }

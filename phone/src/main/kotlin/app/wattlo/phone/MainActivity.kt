@@ -241,7 +241,9 @@ class MainActivity : Activity() {
             topMargin = ui.dp(top).toInt()
         })
         add(ui.label(13f, Palette.LABEL, bold = true).apply {
-            text = getString(CoreR.string.queue_upper, shown ?: Settings.queue(this@MainActivity))
+            val label = shown?.let { Settings.queueLabel(this@MainActivity, it) }.orEmpty()
+            text = getString(CoreR.string.queue_upper, shown ?: Settings.queue(this@MainActivity)) +
+                if (label.isEmpty()) "" else " · " + label.uppercase()
             letterSpacing = 0.1f
         })
         if (st == null) {

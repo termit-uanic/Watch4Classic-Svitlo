@@ -32,6 +32,7 @@ class SettingsActivity : Activity() {
     private lateinit var sourceRow: TextView
     private lateinit var queueRow: TextView
     private lateinit var extraQueuesRow: TextView
+    private lateinit var queueLabelsRow: TextView
     private lateinit var yellow: SwitchRow
     private lateinit var ringsRow: TextView
     private lateinit var labelsRow: TextView
@@ -61,6 +62,7 @@ class SettingsActivity : Activity() {
         sourceRow = ui.groupRow(R.drawable.ic_cloud) { pickSource() }
         queueRow = ui.groupRow(R.drawable.ic_tab_queues) { pickQueue() }
         extraQueuesRow = ui.groupRow(R.drawable.ic_add_circle) { pickExtraQueues() }
+        queueLabelsRow = ui.groupRow(R.drawable.ic_text_size) { pickQueueLabels() }
         yellow = ui.switchRow(R.drawable.ic_warning) {
             Settings.setMaybeIsOff(this, !Settings.maybeIsOff(this))
             Fetcher.notifyAll(this)
@@ -113,7 +115,7 @@ class SettingsActivity : Activity() {
             addView(ui.label(26f, Palette.WHITE, bold = true).apply { text = getString(CoreR.string.settings) })
 
             addView(ui.section(getString(R.string.data_title)))
-            addView(ui.group(sourceRow, queueRow, extraQueuesRow, yellow.card), ui.lp())
+            addView(ui.group(sourceRow, queueRow, extraQueuesRow, queueLabelsRow, yellow.card), ui.lp())
 
             addView(ui.section(getString(R.string.display_title)))
             addView(ui.group(ringsRow, labelsRow), ui.lp())
@@ -222,6 +224,43 @@ class SettingsActivity : Activity() {
                 Settings.setExtraQueues(this, chosen)
                 render()
                 Refresh.now(this) // fetch the schedules of the new queues
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    /** Short names of the extra queues ("parents", "sister"): shown where the main queue says "main". */
+    private fun pickQueueLabels() {
+        val extras = Settings.extraQueues(this)
+        if (extras.isEmpty()) { pickExtraQueues(); return } // nothing to name yet
+        val pad = ui.dp(20f).toInt()
+        val fields = extras.associateWith { q ->
+            android.widget.EditText(this).apply {
+                setText(Settings.queueLabel(this@SettingsActivity, q))
+                hint = getString(R.string.queue_labels_hint)
+                setSingleLine()
+                filters = arrayOf(android.text.InputFilter.LengthFilter(Settings.MAX_LABEL))
+                inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            }
+        }
+        val form = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(pad, ui.dp(8f).toInt(), pad, 0)
+            for ((q, field) in fields) addView(LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(TextView(context).apply { text = q; textSize = 18f; setTypeface(typeface, android.graphics.Typeface.BOLD) },
+                    LinearLayout.LayoutParams(ui.dp(44f).toInt(), WRAP_CONTENT))
+                addView(field, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
+            })
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.queue_labels_title)
+            .setView(ScrollView(this).apply { addView(form) })
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                for ((q, field) in fields) Settings.setQueueLabel(this, q, field.text.toString())
+                render()
+                Widgets.updateAll(this)
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
@@ -401,6 +440,12 @@ class SettingsActivity : Activity() {
         extraQueuesRow.text = getString(
             CoreR.string.two_lines, getString(R.string.queues_extra_title),
             Settings.extraQueues(this).joinToString(", ").ifEmpty { getString(R.string.queues_extra_none) }
+        )
+        queueLabelsRow.text = getString(
+            CoreR.string.two_lines, getString(R.string.queue_labels_title),
+            Settings.extraQueues(this).filter { Settings.queueLabel(this, it).isNotEmpty() }
+                .joinToString(", ") { "$it — " + Settings.queueLabel(this, it) }
+                .ifEmpty { getString(if (Settings.extraQueues(this).isEmpty()) R.string.queue_labels_add_first else R.string.queue_labels_none) }
         )
         val maybeOff = Settings.maybeIsOff(this)
         yellow.label.text = getString(if (maybeOff) CoreR.string.yellow_as_outage else CoreR.string.yellow_as_power)
