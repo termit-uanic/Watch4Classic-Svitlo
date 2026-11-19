@@ -201,15 +201,18 @@ object Widgets {
             }
         }.orEmpty()
 
-        fun ring(date: java.time.LocalDate, isToday: Boolean, rings: Int, labels: RingLabels, withCenter: Boolean = false): android.graphics.Bitmap =
+        fun ring(
+            date: java.time.LocalDate, isToday: Boolean, rings: Int, labels: RingLabels,
+            withCenter: Boolean = false, withDayName: Boolean = true,
+        ): android.graphics.Bitmap =
             WidgetRing.render(
                 days[date], maybe[date], if (isToday) Schedule.slotOf(now) else -1,
                 if (isToday) now.hour * 60 + now.minute else -1, rings, Settings.maybeIsOff(c), labels,
-                center = if (withCenter) center(date, isToday) else null
+                center = if (withCenter) center(date, isToday, withDayName) else null
             )
 
         /** The words in the middle of a day's ring, the same as on the app's dial: "19 November", "Today", "−15h". */
-        private fun center(date: java.time.LocalDate, isToday: Boolean): RingCenter {
+        private fun center(date: java.time.LocalDate, isToday: Boolean, withDayName: Boolean): RingCenter {
             val flags = days[date]
             val (summary, color) = when {
                 flags == null -> c.getString(CoreR.string.no_schedule_yet) to Palette.LABEL
@@ -218,7 +221,7 @@ object Widgets {
             }
             return RingCenter(
                 date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM", java.util.Locale.getDefault())),
-                c.getString(if (isToday) CoreR.string.today else CoreR.string.tomorrow), summary, color
+                if (!withDayName) "" else c.getString(if (isToday) CoreR.string.today else CoreR.string.tomorrow), summary, color
             )
         }
     }
@@ -256,7 +259,8 @@ object Widgets {
         val v = RemoteViews(c.packageName, if (wide) R.layout.widget_medium else R.layout.widget_medium_sq)
         // a 2x2 ring is too small for all the numbers: it keeps only the current hour
         val labels = if (!wide && (ring.labels == RingLabels.BOTH || ring.labels == RingLabels.OUTER)) RingLabels.CURRENT else ring.labels
-        v.setImageViewBitmap(R.id.ring, s.ring(s.today, true, ring.rings, labels))
+        // the date and the total in the middle of the wide one; the text beside it already says what is happening
+        v.setImageViewBitmap(R.id.ring, s.ring(s.today, true, ring.rings, labels, withCenter = wide, withDayName = false))
         v.setTextViewText(R.id.state, s.stateWord)
         v.setTextColor(R.id.state, s.color)
         v.setTextViewText(R.id.countdown, s.countdown)

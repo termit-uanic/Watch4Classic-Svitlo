@@ -15,7 +15,7 @@ import kotlin.math.sin
 /** Which hour numbers a widget ring shows around it. */
 enum class RingLabels { NONE, CURRENT, OUTER, BOTH }
 
-/** What the ring says in the middle: the date, which day it is and the total outage time (like the app's dial). */
+/** What the ring says in the middle: the date, which day it is (empty: not said) and the total outage time (like the app's dial). */
 class RingCenter(val date: String, val title: String, val summary: String, val summaryColor: Int)
 
 /**
@@ -93,13 +93,13 @@ object WidgetRing {
         for (withDate in listOf(true, false)) {
             val lines = buildList {
                 if (withDate) add(Triple(ctr.date, size * 0.07f, Palette.LABEL))
-                add(Triple(ctr.title, size * 0.115f, Palette.WHITE))
+                if (ctr.title.isNotEmpty()) add(Triple(ctr.title, size * 0.115f, Palette.WHITE))
                 add(Triple(ctr.summary, size * 0.088f, ctr.summaryColor))
             }
             val sizes = lines.map { it.second }.toFloatArray()
             // width per unit of size; never narrower than a typical word ("Tomorrow", "-11h 30m"), so that today and
             // tomorrow get the same sizes and the same lines
-            val floor = if (withDate) listOf(3.0f, 4.4f, 4.2f) else listOf(4.4f, 4.2f)
+            val floor = buildList { if (withDate) add(3.0f); if (ctr.title.isNotEmpty()) add(4.4f); add(4.2f) }
             val unit = lines.mapIndexed { i, (t, base, _) -> text.textSize = base; maxOf(text.measureText(t) / base, floor[i]) }
             repeat(5) { // the heights decide the chords, the chords decide the sizes
                 val heights = sizes.map { it * 1.18f }
