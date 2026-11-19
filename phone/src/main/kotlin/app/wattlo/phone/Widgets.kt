@@ -259,8 +259,9 @@ object Widgets {
         v.setTextColor(R.id.state, s.color)
         v.setTextViewText(R.id.countdown, s.countdown)
         val tomorrow = s.today.plusDays(1)
-        // the rings need height: a short widget shows the lists only
-        val rings = heightDp >= 380
+        // the ring takes the height the lists leave (it is scaled to fit), so it only needs a little room; a 4x4 widget
+        // on a launcher with low cells is about 330 dp high, a two-row one about 235 dp and shows the lists only
+        val rings = heightDp >= 260
         for ((ringView, date, isToday) in listOf(Triple(R.id.ringToday, s.today, true), Triple(R.id.ringTomorrow, tomorrow, false))) {
             if (rings) v.setImageViewBitmap(ringView, s.ring(date, isToday, ring.rings, ring.labels))
             v.setViewVisibility(ringView, if (rings) android.view.View.VISIBLE else android.view.View.GONE)
