@@ -145,6 +145,11 @@ class SettingsActivity : Activity() {
         }, Tab.SETTINGS))
     }
 
+    override fun onPause() {
+        super.onPause()
+        Widgets.updateAll(this) // a ring setting may have changed
+    }
+
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() = openTab(Tab.NOW)
 
