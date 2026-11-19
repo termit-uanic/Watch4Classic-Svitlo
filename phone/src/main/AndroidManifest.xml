@@ -6,7 +6,7 @@
         android:allowBackup="false"
         android:icon="@drawable/ic_bolt"
         android:label="@string/app_name"
-        android:theme="@style/Theme.Svitlo">
+        android:theme="@style/Theme.Wattlo">
 
         <activity
             android:name=".MainActivity"

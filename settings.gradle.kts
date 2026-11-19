@@ -16,7 +16,7 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "lightwatch"
+rootProject.name = "wattlo"
 include(":app")
 include(":core")
 include(":phone")

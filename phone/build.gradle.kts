@@ -5,11 +5,11 @@ plugins {
 // The phone app. It shares the package name with the watch app (:app) and is signed with the same key, which the
 // Wear OS Data Layer needs to pair the two apps later; the code shared by both lives in :core.
 android {
-    namespace = "com.yehor.lightwatch.phone"
+    namespace = "app.wattlo.phone"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.yehor.lightwatch"
+        applicationId = "app.wattlo"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

@@ -11,7 +11,7 @@
 
     <application>
         <receiver
-            android:name="com.yehor.lightwatch.AlarmReceiver"
+            android:name="app.wattlo.AlarmReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

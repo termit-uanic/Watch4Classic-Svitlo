@@ -25,7 +25,7 @@
         </activity>
 
         <service
-            android:name=".LightTileService"
+            android:name=".WattloTileService"
             android:exported="true"
             android:icon="@drawable/ic_bolt"
             android:label="@string/app_name"
@@ -39,7 +39,7 @@
         </service>
 
         <service
-            android:name=".LightComplicationService"
+            android:name=".WattloComplicationService"
             android:exported="true"
             android:icon="@drawable/ic_bolt"
             android:label="@string/app_name"

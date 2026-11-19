@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace = "com.yehor.lightwatch"
+    namespace = "app.wattlo"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.yehor.lightwatch"
+        applicationId = "app.wattlo"
         minSdk = 30
         targetSdk = 34
         versionCode = 2

@@ -5,7 +5,7 @@ plugins {
 // Code shared by the watch app (:app) and, later, the phone app: the schedule and its parsers, the cache,
 // the settings, the background refresh, the reminders, the day dial and the strings.
 android {
-    namespace = "com.yehor.lightwatch.core"
+    namespace = "app.wattlo.core"
     compileSdk = 35
 
     defaultConfig {
