@@ -121,4 +121,4 @@ Wattlo grew out of the watch app **"Svitlo"** by Yehor Shamanskyi, [sudoRM-rSLAS
 
 ## License
 
-[MIT](LICENSE). The copyright of the initial code belongs to Yehor Shamanskyi; his notice is kept in `LICENSE`.
+[MIT](LICENSE). The copyright of the initial code belongs to Yehor Shamanskyi; his notice is kept in `LICENSE`. The licenses of the third-party libraries are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) (the app shows the same text: *Settings → Open-source licenses*; `tools/update_licenses.py` rebuilds the list).

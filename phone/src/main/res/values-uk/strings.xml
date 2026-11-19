@@ -51,4 +51,8 @@
     <string name="widget_as_app_value">Як у застосунку: %1$s</string>
     <string name="widget_labels_current">Лише поточна година</string>
     <string name="widget_labels_none">Без підписів</string>
+    <string name="about_title">Про застосунок</string>
+    <string name="about_version">Версія %1$s</string>
+    <string name="licenses_title">Ліцензії відкритого ПЗ</string>
+    <string name="licenses_hint">MIT і сторонні бібліотеки</string>
 </resources>

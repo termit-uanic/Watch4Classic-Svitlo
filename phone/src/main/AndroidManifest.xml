@@ -29,6 +29,11 @@
             android:exported="false" />
 
         <activity
+            android:name=".LicensesActivity"
+            android:exported="false"
+            android:label="@string/licenses_title" />
+
+        <activity
             android:name=".SettingsActivity"
             android:exported="false"
             android:label="@string/settings" />

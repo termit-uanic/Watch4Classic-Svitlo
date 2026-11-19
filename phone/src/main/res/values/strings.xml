@@ -51,4 +51,8 @@
     <string name="widget_as_app_value">As in the app: %1$s</string>
     <string name="widget_labels_current">Current hour only</string>
     <string name="widget_labels_none">No numbers</string>
+    <string name="about_title">About</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="licenses_title">Open-source licenses</string>
+    <string name="licenses_hint">MIT and third-party libraries</string>
 </resources>

@@ -138,6 +138,19 @@ class SettingsActivity : Activity() {
                 ),
                 ui.lp(10f)
             )
+
+            addView(ui.section(getString(R.string.about_title)))
+            addView(
+                ui.group(
+                    ui.infoRow(R.drawable.ic_info).apply {
+                        text = getString(CoreR.string.two_lines, getString(CoreR.string.app_name), getString(R.string.about_version, versionName()))
+                    },
+                    ui.groupRow(R.drawable.ic_description) { startActivity(Intent(this@SettingsActivity, LicensesActivity::class.java)) }.apply {
+                        text = getString(CoreR.string.two_lines, getString(R.string.licenses_title), getString(R.string.licenses_hint))
+                    },
+                ),
+                ui.lp()
+            )
         }
         val width = minOf(resources.displayMetrics.widthPixels, ui.dp(560f).toInt())
         setContentView(withTabs(ScrollView(this).apply {
@@ -417,6 +430,9 @@ class SettingsActivity : Activity() {
     // ---------------------------------------------------------------- rendering
 
     private fun Ui.two(title: Int, value: Int) = getString(CoreR.string.two_lines, getString(title), getString(value))
+
+    private fun versionName(): String =
+        runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull().orEmpty()
 
     private fun hourLabel(h: Int) = "%02d:00".format(h)
 

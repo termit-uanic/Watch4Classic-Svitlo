@@ -94,6 +94,16 @@ class Ui(private val ctx: Context) {
         setOnClickListener { onClick() }
     }
 
+    /** A row of a [group] that only shows information: icon, title and value, nothing to tap. */
+    fun infoRow(icon: Int): TextView = RowText(ctx).apply {
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+        setTextColor(Palette.GREY)
+        rowPadding(this)
+        compoundDrawablePadding = dp(14f).toInt()
+        setCompoundDrawablesRelative(badge(icon), null, null, null)
+        gravity = Gravity.CENTER_VERTICAL
+    }
+
     /** A row of a [group] with a switch; the whole row is the click target, the switch only shows the state. */
     fun switchRow(icon: Int, onClick: () -> Unit): SwitchRow {
         val text = RowText(ctx).apply {

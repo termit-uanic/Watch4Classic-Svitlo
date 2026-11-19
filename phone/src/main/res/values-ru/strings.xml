@@ -51,4 +51,8 @@
     <string name="widget_as_app_value">Как в приложении: %1$s</string>
     <string name="widget_labels_current">Только текущий час</string>
     <string name="widget_labels_none">Без подписей</string>
+    <string name="about_title">О приложении</string>
+    <string name="about_version">Версия %1$s</string>
+    <string name="licenses_title">Лицензии открытого ПО</string>
+    <string name="licenses_hint">MIT и сторонние библиотеки</string>
 </resources>
