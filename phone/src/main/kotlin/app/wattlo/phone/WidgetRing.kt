@@ -28,8 +28,7 @@ object WidgetRing {
         flags: BooleanArray?, maybe: BooleanArray?, curSlot: Int, nowMinute: Int,
         rings: Int, yellowAsOutage: Boolean, shownLabels: RingLabels = RingLabels.NONE, px: Int = 360, center: RingCenter? = null,
     ): Bitmap {
-        // two rings leave a disc too small for the words once the inner hour numbers sit in it: they give way to the words
-        val labels = if (center != null && rings == 2 && shownLabels == RingLabels.BOTH) RingLabels.OUTER else shownLabels
+        val labels = shownLabels
         val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
         val cv = Canvas(bmp)
         val size = px.toFloat()
@@ -80,7 +79,7 @@ object WidgetRing {
             // the free disc inside the innermost thing: the inner hour numbers (two rings, all hours) or the innermost ring
             val inner = if (two && labels == RingLabels.BOTH) ringR.last() - thickness / 2 - labelSize * 0.8f - size * 0.01f
             else ringR.last() - thickness / 2 - size * 0.015f
-            drawCenter(cv, c, inner - size * (if (two && labels == RingLabels.BOTH) 0.02f else 0.01f), size, center)
+            drawCenter(cv, c, inner - size * (if (two && labels == RingLabels.BOTH) 0.03f else 0.01f), size, center)
         }
         return bmp
     }
@@ -98,7 +97,10 @@ object WidgetRing {
                 add(Triple(ctr.summary, size * 0.088f, ctr.summaryColor))
             }
             val sizes = lines.map { it.second }.toFloatArray()
-            val unit = lines.map { (t, base, _) -> text.textSize = base; text.measureText(t) / base } // width per unit of size
+            // width per unit of size; never narrower than a typical word ("Tomorrow", "-11h 30m"), so that today and
+            // tomorrow get the same sizes and the same lines
+            val floor = if (withDate) listOf(3.0f, 4.4f, 4.2f) else listOf(4.4f, 4.2f)
+            val unit = lines.mapIndexed { i, (t, base, _) -> text.textSize = base; maxOf(text.measureText(t) / base, floor[i]) }
             repeat(5) { // the heights decide the chords, the chords decide the sizes
                 val heights = sizes.map { it * 1.18f }
                 var top = -heights.sum() / 2
@@ -109,7 +111,7 @@ object WidgetRing {
                     top += heights[i]
                 }
             }
-            if (withDate && sizes[0] < size * 0.035f) continue
+            if (withDate && sizes[0] < size * 0.028f) continue
             val heights = sizes.map { it * 1.18f }
             var y = c - heights.sum() / 2
             for ((i, line) in lines.withIndex()) {
