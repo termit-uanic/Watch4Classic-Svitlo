@@ -201,11 +201,26 @@ object Widgets {
             }
         }.orEmpty()
 
-        fun ring(date: java.time.LocalDate, isToday: Boolean, rings: Int, labels: RingLabels): android.graphics.Bitmap =
+        fun ring(date: java.time.LocalDate, isToday: Boolean, rings: Int, labels: RingLabels, withCenter: Boolean = false): android.graphics.Bitmap =
             WidgetRing.render(
                 days[date], maybe[date], if (isToday) Schedule.slotOf(now) else -1,
-                if (isToday) now.hour * 60 + now.minute else -1, rings, Settings.maybeIsOff(c), labels
+                if (isToday) now.hour * 60 + now.minute else -1, rings, Settings.maybeIsOff(c), labels,
+                center = if (withCenter) center(date, isToday) else null
             )
+
+        /** The words in the middle of a day's ring, the same as on the app's dial: "19 November", "Today", "−15h". */
+        private fun center(date: java.time.LocalDate, isToday: Boolean): RingCenter {
+            val flags = days[date]
+            val (summary, color) = when {
+                flags == null -> c.getString(CoreR.string.no_schedule_yet) to Palette.LABEL
+                flags.none { it } -> c.getString(CoreR.string.power_all_day) to Palette.GREEN
+                else -> c.getString(CoreR.string.minus, Fmt.duration(c, Schedule.offDuration(flags))) to Palette.RED
+            }
+            return RingCenter(
+                date.format(java.time.format.DateTimeFormatter.ofPattern("d MMM", java.util.Locale.getDefault())),
+                c.getString(if (isToday) CoreR.string.today else CoreR.string.tomorrow), summary, color
+            )
+        }
     }
 
     /** The background of a widget: dark, tinted by the state, or none at all. */
@@ -264,11 +279,13 @@ object Widgets {
         // on a launcher with low cells is about 330 dp high, a two-row one about 235 dp and shows the lists only
         val rings = heightDp >= 260
         for ((ringView, date, isToday) in listOf(Triple(R.id.ringToday, s.today, true), Triple(R.id.ringTomorrow, tomorrow, false))) {
-            if (rings) v.setImageViewBitmap(ringView, s.ring(date, isToday, ring.rings, ring.labels))
+            if (rings) v.setImageViewBitmap(ringView, s.ring(date, isToday, ring.rings, ring.labels, withCenter = true))
             v.setViewVisibility(ringView, if (rings) android.view.View.VISIBLE else android.view.View.GONE)
         }
         day(c, v, s, s.today, true, R.id.titleToday, R.id.listToday)
         day(c, v, s, tomorrow, false, R.id.titleTomorrow, R.id.listTomorrow)
+        // with the rings the day, the date and the total are in the middle of them; without, the title says it
+        for (t in listOf(R.id.titleToday, R.id.titleTomorrow)) v.setViewVisibility(t, if (rings) android.view.View.GONE else android.view.View.VISIBLE)
         return v
     }
 

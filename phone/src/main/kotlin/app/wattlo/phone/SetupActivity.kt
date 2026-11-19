@@ -261,7 +261,7 @@ class SetupActivity : Activity() {
         return WidgetRing.render(
             flags, maybe, Schedule.slotOf(now), now.hour * 60 + now.minute,
             rings = if (index == 0) 1 else 2, yellowAsOutage = maybeOff,
-            labels = if (index == 2) RingLabels.BOTH else RingLabels.OUTER, px = 360
+            shownLabels = if (index == 2) RingLabels.BOTH else RingLabels.OUTER, px = 360
         )
     }
 

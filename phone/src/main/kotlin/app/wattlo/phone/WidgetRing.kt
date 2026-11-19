@@ -15,6 +15,9 @@ import kotlin.math.sin
 /** Which hour numbers a widget ring shows around it. */
 enum class RingLabels { NONE, CURRENT, OUTER, BOTH }
 
+/** What the ring says in the middle: the date, which day it is and the total outage time (like the app's dial). */
+class RingCenter(val date: String, val title: String, val summary: String, val summaryColor: Int)
+
 /**
  * The day ring for the widgets, drawn into a bitmap (a widget can only show views a RemoteViews supports): the same
  * dashes and colours as [app.wattlo.DialView], but without the hours and the text, so that it stays clear
@@ -23,16 +26,19 @@ enum class RingLabels { NONE, CURRENT, OUTER, BOTH }
 object WidgetRing {
     fun render(
         flags: BooleanArray?, maybe: BooleanArray?, curSlot: Int, nowMinute: Int,
-        rings: Int, yellowAsOutage: Boolean, labels: RingLabels = RingLabels.NONE, px: Int = 360,
+        rings: Int, yellowAsOutage: Boolean, shownLabels: RingLabels = RingLabels.NONE, px: Int = 360, center: RingCenter? = null,
     ): Bitmap {
+        // two rings leave a disc too small for the words once the inner hour numbers sit in it: they give way to the words
+        val labels = if (center != null && rings == 2 && shownLabels == RingLabels.BOTH) RingLabels.OUTER else shownLabels
         val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
         val cv = Canvas(bmp)
         val size = px.toFloat()
         val c = size / 2
         val two = rings == 2
         // the band of a ring; the dashes are half as wide as the band, like on the app's dial
-        val thickness = size * if (two) 0.085f else 0.08f
-        val gap = size * 0.02f
+        // (with words in the middle the bands are a little thinner, which leaves the words more room)
+        val thickness = size * if (two) (if (center != null) 0.064f else 0.085f) else 0.08f
+        val gap = size * if (center != null && two) 0.014f else 0.02f
         // with hour numbers the rings move inwards to leave them a band
         val labelSize = size * 0.062f
         val labelBand = if (labels == RingLabels.NONE) 0f else labelSize + size * 0.02f
@@ -70,7 +76,51 @@ object WidgetRing {
             )
         }
         if (labels != RingLabels.NONE) drawLabels(cv, size, two, ringR, thickness, labelSize, labels, nowMinute)
+        if (center != null) {
+            // the free disc inside the innermost thing: the inner hour numbers (two rings, all hours) or the innermost ring
+            val inner = if (two && labels == RingLabels.BOTH) ringR.last() - thickness / 2 - labelSize * 0.8f - size * 0.01f
+            else ringR.last() - thickness / 2 - size * 0.015f
+            drawCenter(cv, c, inner - size * (if (two && labels == RingLabels.BOTH) 0.02f else 0.01f), size, center)
+        }
         return bmp
+    }
+
+    /**
+     * Three centred lines. Each line is scaled to be narrower than the chord of the disc at its height (the date is
+     * short and keeps its size, the long word shrinks alone); the date goes when it would be too small to read.
+     */
+    private fun drawCenter(cv: Canvas, c: Float, freeR: Float, size: Float, ctr: RingCenter) {
+        val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD }
+        for (withDate in listOf(true, false)) {
+            val lines = buildList {
+                if (withDate) add(Triple(ctr.date, size * 0.07f, Palette.LABEL))
+                add(Triple(ctr.title, size * 0.115f, Palette.WHITE))
+                add(Triple(ctr.summary, size * 0.088f, ctr.summaryColor))
+            }
+            val sizes = lines.map { it.second }.toFloatArray()
+            val unit = lines.map { (t, base, _) -> text.textSize = base; text.measureText(t) / base } // width per unit of size
+            repeat(5) { // the heights decide the chords, the chords decide the sizes
+                val heights = sizes.map { it * 1.18f }
+                var top = -heights.sum() / 2
+                for (i in lines.indices) {
+                    val far = maxOf(kotlin.math.abs(top), kotlin.math.abs(top + heights[i]))
+                    val chord = 2 * kotlin.math.sqrt(max(0f, freeR * freeR - far * far)) * 0.92f
+                    sizes[i] = minOf(lines[i].second, chord / unit[i])
+                    top += heights[i]
+                }
+            }
+            if (withDate && sizes[0] < size * 0.035f) continue
+            val heights = sizes.map { it * 1.18f }
+            var y = c - heights.sum() / 2
+            for ((i, line) in lines.withIndex()) {
+                text.textSize = sizes[i]
+                text.color = line.third
+                text.typeface = if (withDate && i == 0) Typeface.DEFAULT else Typeface.DEFAULT_BOLD
+                y += heights[i]
+                cv.drawText(line.first, c, y - heights[i] * 0.2f, text)
+            }
+            return
+        }
     }
 
     /**
