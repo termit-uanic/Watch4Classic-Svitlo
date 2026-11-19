@@ -75,6 +75,8 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Refresh.ensure(this)
+        // the first time: the setup wizard, on top of this screen (not again after a rotation)
+        if (savedInstanceState == null && !SetupActivity.isDone(this)) startActivity(Intent(this, SetupActivity::class.java))
 
         head = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL

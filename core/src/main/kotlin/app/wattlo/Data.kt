@@ -105,7 +105,19 @@ object Settings {
     fun source(c: Context): Source =
         runCatching { Source.valueOf(p(c).getString("source", null)!!) }.getOrDefault(Source.POE)
 
-    fun queue(c: Context): String = p(c).getString("queue", null)?.takeIf { it in QUEUES } ?: "3.2"
+    /** The queue until the user picks one (the setup wizard asks first thing). */
+    const val DEFAULT_QUEUE = "1.1"
+
+    fun queue(c: Context): String = p(c).getString("queue", null)?.takeIf { it in QUEUES } ?: DEFAULT_QUEUE
+
+    /**
+     * The user picked this queue (the setup wizard): store it and share it with the other device even when it is
+     * the queue that was in force anyway, so that both devices end up with an explicit choice.
+     */
+    fun chooseQueue(c: Context, queue: String) {
+        if (queue != queue(c)) set(c, queue = queue)
+        else { p(c).edit().putString("queue", queue).apply(); touch(c) }
+    }
 
     /** Whether "switching" (yellow) slots count as no power in the countdown (tile and complication). Defaults to true. */
     fun maybeIsOff(c: Context): Boolean = p(c).getBoolean("maybeOff", true)
@@ -227,7 +239,7 @@ object Settings {
         /** Values from the other device are not trusted blindly: anything out of range falls back to the defaults. */
         fun sanitized() = copy(
             source = if (Source.values().any { it.name == source }) source else Source.POE.name,
-            queue = queue.takeIf { it in QUEUES } ?: "3.2",
+            queue = queue.takeIf { it in QUEUES } ?: DEFAULT_QUEUE,
             notifyOff = notifyOff.coerceAtLeast(0),
             notifyOn = notifyOn.coerceAtLeast(0),
             quietFrom = quietFrom.coerceIn(0, 23),

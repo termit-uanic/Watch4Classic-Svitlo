@@ -148,6 +148,9 @@ class SettingsActivity : Activity() {
                     ui.groupRow(R.drawable.ic_description) { startActivity(Intent(this@SettingsActivity, LicensesActivity::class.java)) }.apply {
                         text = getString(CoreR.string.two_lines, getString(R.string.licenses_title), getString(R.string.licenses_hint))
                     },
+                    ui.groupRow(R.drawable.ic_tab_now) { startActivity(Intent(this@SettingsActivity, SetupActivity::class.java)) }.apply {
+                        text = getString(CoreR.string.two_lines, getString(R.string.setup_rerun_title), getString(R.string.setup_rerun_hint))
+                    },
                 ),
                 ui.lp()
             )
@@ -332,30 +335,6 @@ class SettingsActivity : Activity() {
             .show()
     }
 
-    /**
-     * Permission not asked yet, or may be asked again: show the system dialog.
-     * If denied permanently or turned off in settings: open the app's notification settings.
-     */
-    private fun askNotificationPermission() {
-        if (Notify.enabled(this)) return
-        val perm = android.Manifest.permission.POST_NOTIFICATIONS
-        val granted = android.os.Build.VERSION.SDK_INT < 33 ||
-            checkSelfPermission(perm) == android.content.pm.PackageManager.PERMISSION_GRANTED
-        val prefs = getSharedPreferences("notify", MODE_PRIVATE)
-        val askedBefore = prefs.getBoolean("asked", false)
-        if (!granted && (!askedBefore || shouldShowRequestPermissionRationale(perm))) {
-            prefs.edit().putBoolean("asked", true).apply()
-            requestPermissions(arrayOf(perm), 1)
-        } else {
-            runCatching {
-                startActivity(
-                    Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                        .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)
-                )
-            }
-        }
-    }
-
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         Notify.schedule(this)
@@ -406,26 +385,6 @@ class SettingsActivity : Activity() {
 
     // ---------------------------------------------------------------- background work
 
-    /** The autostart page of the vendor's security app (Xiaomi), or else the app's own page in the system settings. */
-    private fun openAutostart() {
-        val xiaomi = Intent().setComponent(
-            ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")
-        )
-        if (!tryStart(xiaomi)) openAppDetails()
-    }
-
-    /** The list of apps with battery restrictions, or else the app's own page. */
-    private fun openBattery() {
-        if (!tryStart(Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))) openAppDetails()
-    }
-
-    private fun openAppDetails() {
-        tryStart(
-            Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
-        )
-    }
-
-    private fun tryStart(intent: Intent): Boolean = runCatching { startActivity(intent) }.isSuccess
 
     // ---------------------------------------------------------------- rendering
 

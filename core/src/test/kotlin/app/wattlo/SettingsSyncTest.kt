@@ -11,8 +11,10 @@ class SettingsSyncTest {
     @Test fun sanitized_fallsBackOnUnknownSourceAndQueue() {
         val s = ok.copy(source = "nope", queue = "9.9").sanitized()
         assertEquals(Source.POE.name, s.source)
-        assertEquals("3.2", s.queue)
+        assertEquals(Settings.DEFAULT_QUEUE, s.queue)
     }
+
+    @Test fun defaultQueueIsOneOfTheQueues() = org.junit.Assert.assertTrue(Settings.DEFAULT_QUEUE in Settings.QUEUES)
 
     @Test fun sanitized_ringsAreOneOrTwo() {
         val s = ok.copy(tileRings = 7, wearAppRings = 0).sanitized()
