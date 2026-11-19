@@ -92,9 +92,11 @@ object WidgetRing {
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD }
         for (withDate in listOf(true, false)) {
             val lines = buildList {
-                if (withDate) add(Triple(ctr.date, size * 0.07f, Palette.LABEL))
-                if (ctr.title.isNotEmpty()) add(Triple(ctr.title, size * 0.115f, Palette.WHITE))
-                add(Triple(ctr.summary, size * 0.088f, ctr.summaryColor))
+                // without the name of the day there are two lines, and they can be larger
+                val two = ctr.title.isEmpty()
+                if (withDate) add(Triple(ctr.date, size * if (two) 0.09f else 0.07f, Palette.LABEL))
+                if (!two) add(Triple(ctr.title, size * 0.115f, Palette.WHITE))
+                add(Triple(ctr.summary, size * if (two) 0.125f else 0.088f, ctr.summaryColor))
             }
             val sizes = lines.map { it.second }.toFloatArray()
             // width per unit of size; never narrower than a typical word ("Tomorrow", "-11h 30m"), so that today and

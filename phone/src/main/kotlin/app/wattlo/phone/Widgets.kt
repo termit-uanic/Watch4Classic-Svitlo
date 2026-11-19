@@ -283,12 +283,13 @@ object Widgets {
         // on a launcher with low cells is about 330 dp high, a two-row one about 235 dp and shows the lists only
         val rings = heightDp >= 260
         for ((ringView, date, isToday) in listOf(Triple(R.id.ringToday, s.today, true), Triple(R.id.ringTomorrow, tomorrow, false))) {
-            if (rings) v.setImageViewBitmap(ringView, s.ring(date, isToday, ring.rings, ring.labels, withCenter = true))
+            if (rings) v.setImageViewBitmap(ringView, s.ring(date, isToday, ring.rings, ring.labels, withCenter = true, withDayName = false))
             v.setViewVisibility(ringView, if (rings) android.view.View.VISIBLE else android.view.View.GONE)
         }
         day(c, v, s, s.today, true, R.id.titleToday, R.id.listToday)
         day(c, v, s, tomorrow, false, R.id.titleTomorrow, R.id.listTomorrow)
-        // with the rings the day, the date and the total are in the middle of them; without, the title says it
+        // with the rings the date and the total are in the middle of them (the date says which day it is); without
+        // the rings the title says it all
         for (t in listOf(R.id.titleToday, R.id.titleTomorrow)) v.setViewVisibility(t, if (rings) android.view.View.GONE else android.view.View.VISIBLE)
         return v
     }
