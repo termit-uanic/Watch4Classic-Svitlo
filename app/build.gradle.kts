@@ -10,8 +10,8 @@ android {
         applicationId = "app.wattlo"
         minSdk = 30
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = rootProject.extra["watchVersionCode"] as Int
+        versionName = rootProject.extra["appVersionName"] as String
     }
 
     buildTypes {
