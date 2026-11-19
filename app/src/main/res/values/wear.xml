@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- lets the phone app find out that the watch has this app (SettingsSync.WATCH_CAPABILITY) -->
+    <string-array name="android_wear_capabilities">
+        <item>wattlo_watch</item>
+    </string-array>
+</resources>

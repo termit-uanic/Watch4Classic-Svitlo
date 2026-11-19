@@ -95,6 +95,9 @@ object Http {
 
 /** Settings: source + queue, display and notification options. */
 object Settings {
+    /** Set by the watch app: its display options are the ones the phone sets for the watch (see [Synced]). */
+    @Volatile var isWatch = false
+
     val QUEUES = (1..6).flatMap { q -> (1..2).map { "$q.$it" } }
 
     private fun p(c: Context) = c.getSharedPreferences("settings", Context.MODE_PRIVATE)
@@ -107,13 +110,14 @@ object Settings {
     /** Whether "switching" (yellow) slots count as no power in the countdown (tile and complication). Defaults to true. */
     fun maybeIsOff(c: Context): Boolean = p(c).getBoolean("maybeOff", true)
 
-    fun setMaybeIsOff(c: Context, v: Boolean) { p(c).edit().putBoolean("maybeOff", v).apply() }
+    fun setMaybeIsOff(c: Context, v: Boolean) { p(c).edit().putBoolean("maybeOff", v).apply(); touch(c) }
 
     /** How many minutes before power goes off / on to notify (0 = don't notify). */
     fun notifyOff(c: Context): Int = p(c).getInt("notifyOff", 0)
     fun notifyOn(c: Context): Int = p(c).getInt("notifyOn", 0)
     fun setNotify(c: Context, off: Int = notifyOff(c), on: Int = notifyOn(c)) {
         p(c).edit().putInt("notifyOff", off).putInt("notifyOn", on).apply()
+        touch(c)
     }
 
     /**
@@ -122,47 +126,170 @@ object Settings {
      */
     fun quietFrom(c: Context): Int = p(c).getInt("quietFrom", 0)
     fun quietTo(c: Context): Int = p(c).getInt("quietTo", 0)
-    fun setQuiet(c: Context, from: Int, to: Int) { p(c).edit().putInt("quietFrom", from).putInt("quietTo", to).apply() }
+    fun setQuiet(c: Context, from: Int, to: Int) { p(c).edit().putInt("quietFrom", from).putInt("quietTo", to).apply(); touch(c) }
 
     /** How the day is drawn on the tile: 1 = one ring of 24 hours, 2 = two rings of 12 hours. */
     fun tileRings(c: Context): Int = if (p(c).getInt("tileRings", 1) == 2) 2 else 1
-    fun setTileRings(c: Context, rings: Int) { p(c).edit().putInt("tileRings", if (rings == 2) 2 else 1).apply() }
+    fun setTileRings(c: Context, rings: Int) { p(c).edit().putInt("tileRings", if (rings == 2) 2 else 1).apply(); touch(c) }
 
     /** With two rings on the tile: also label the hours 12-24 inside the inner ring (default), or only 0-12 outside. */
     fun tileInnerLabels(c: Context): Boolean = p(c).getBoolean("tileInnerLabels", true)
-    fun setTileInnerLabels(c: Context, v: Boolean) { p(c).edit().putBoolean("tileInnerLabels", v).apply() }
+    fun setTileInnerLabels(c: Context, v: Boolean) { p(c).edit().putBoolean("tileInnerLabels", v).apply(); touch(c) }
 
     /** Show "then 2h without power" under the time of the next change on the tile. On by default. */
     fun tileShowNext(c: Context): Boolean = p(c).getBoolean("tileShowNext", true)
-    fun setTileShowNext(c: Context, v: Boolean) { p(c).edit().putBoolean("tileShowNext", v).apply() }
+    fun setTileShowNext(c: Context, v: Boolean) { p(c).edit().putBoolean("tileShowNext", v).apply(); touch(c) }
 
     /** The same two settings for the day dials inside the app (kept apart from the tile's). */
     /** The number of rings until the user picks one: the watch starts with 1, the phone app sets 2 at start. */
     @Volatile var appRingsDefault = 1
     fun appRings(c: Context): Int = if (p(c).getInt("appRings", appRingsDefault) == 2) 2 else 1
-    fun setAppRings(c: Context, rings: Int) { p(c).edit().putInt("appRings", if (rings == 2) 2 else 1).apply() }
+    fun setAppRings(c: Context, rings: Int) { p(c).edit().putInt("appRings", if (rings == 2) 2 else 1).apply(); if (isWatch) touch(c) }
     fun appInnerLabels(c: Context): Boolean = p(c).getBoolean("appInnerLabels", true)
-    fun setAppInnerLabels(c: Context, v: Boolean) { p(c).edit().putBoolean("appInnerLabels", v).apply() }
+    fun setAppInnerLabels(c: Context, v: Boolean) { p(c).edit().putBoolean("appInnerLabels", v).apply(); if (isWatch) touch(c) }
+
+    /**
+     * The app screens of the watch as the phone sets them. On the watch they are its own [appRings] and
+     * [appInnerLabels]; on the phone, which has its own app settings, they are separate copies.
+     */
+    fun wearAppRings(c: Context): Int =
+        if (isWatch) appRings(c) else if (p(c).getInt("wearAppRings", 1) == 2) 2 else 1
+    fun setWearAppRings(c: Context, rings: Int) {
+        if (isWatch) return setAppRings(c, rings)
+        p(c).edit().putInt("wearAppRings", if (rings == 2) 2 else 1).apply(); touch(c)
+    }
+    fun wearAppInnerLabels(c: Context): Boolean =
+        if (isWatch) appInnerLabels(c) else p(c).getBoolean("wearAppInnerLabels", true)
+    fun setWearAppInnerLabels(c: Context, v: Boolean) {
+        if (isWatch) return setAppInnerLabels(c, v)
+        p(c).edit().putBoolean("wearAppInnerLabels", v).apply(); touch(c)
+    }
+
+    /**
+     * The watch tells the phone its display options once, so the phone's settings screen starts with the watch's
+     * real values instead of the defaults (and the phone's first change does not reset them).
+     */
+    fun publishOnce(c: Context) {
+        if (p(c).getBoolean("published", false)) return
+        p(c).edit().putBoolean("published", true).apply()
+        touch(c)
+    }
 
     /** Notify when the schedule for today changed. Off by default. */
     fun notifyTodayChanged(c: Context): Boolean = p(c).getBoolean("notifyTodayChanged", false)
-    fun setNotifyTodayChanged(c: Context, v: Boolean) { p(c).edit().putBoolean("notifyTodayChanged", v).apply() }
+    fun setNotifyTodayChanged(c: Context, v: Boolean) { p(c).edit().putBoolean("notifyTodayChanged", v).apply(); touch(c) }
 
     /** Notify when the schedule for tomorrow appeared. Off by default. */
     fun notifyTomorrowNew(c: Context): Boolean = p(c).getBoolean("notifyTomorrowNew", false)
-    fun setNotifyTomorrowNew(c: Context, v: Boolean) { p(c).edit().putBoolean("notifyTomorrowNew", v).apply() }
+    fun setNotifyTomorrowNew(c: Context, v: Boolean) { p(c).edit().putBoolean("notifyTomorrowNew", v).apply(); touch(c) }
 
     /** Changing the source/queue clears the cache: the old schedule no longer applies. */
     fun set(c: Context, source: Source = source(c), queue: String = queue(c)) {
         if (source == source(c) && queue == queue(c)) return
+        val sourceChanged = source != source(c)
         p(c).edit().putString("source", source.name).putString("queue", queue).apply()
-        Store.clear(c)
+        // the new main queue is no longer an extra one
+        if (queue in extraQueues(c)) writeExtras(c, extraQueues(c) - queue)
+        if (sourceChanged) Store.clearAll(c) else { Store.clear(c); Store.clear(c, queue) }
+        touch(c)
+    }
+
+    /**
+     * Extra queues, for the phone app only: it can show their state next to the main queue [queue]. They are not
+     * synchronised, and the watch, the widgets and the reminders only ever use the main queue.
+     */
+    fun extraQueues(c: Context): List<String> =
+        (p(c).getString("extraQueues", "") ?: "").split(",").filter { it in QUEUES }.distinct().filter { it != queue(c) }
+
+    fun setExtraQueues(c: Context, list: Collection<String>) {
+        val old = extraQueues(c)
+        val new = list.filter { it in QUEUES && it != queue(c) }.distinct().sortedBy { QUEUES.indexOf(it) }
+        writeExtras(c, new)
+        (old - new.toSet()).forEach { Store.clear(c, it) } // no cache for a queue that is no longer shown
+    }
+
+    private fun writeExtras(c: Context, list: List<String>) {
+        p(c).edit().putString("extraQueues", list.joinToString(",")).apply()
+    }
+
+    /**
+     * The settings shared between the watch and the phone (synchronised over the Wear OS Data Layer, see
+     * [SettingsSync]); the display options of the tile and of the app screens stay per device.
+     */
+    data class Synced(
+        val source: String, val queue: String, val maybeOff: Boolean,
+        val notifyOff: Int, val notifyOn: Int, val quietFrom: Int, val quietTo: Int,
+        val notifyToday: Boolean, val notifyTomorrow: Boolean,
+        // how the watch looks: the tile, and the app screens of the watch
+        val tileRings: Int = 1, val tileInnerLabels: Boolean = true, val tileShowNext: Boolean = true,
+        val wearAppRings: Int = 1, val wearAppInnerLabels: Boolean = true,
+    ) {
+        /** Values from the other device are not trusted blindly: anything out of range falls back to the defaults. */
+        fun sanitized() = copy(
+            source = if (Source.values().any { it.name == source }) source else Source.POE.name,
+            queue = queue.takeIf { it in QUEUES } ?: "3.2",
+            notifyOff = notifyOff.coerceAtLeast(0),
+            notifyOn = notifyOn.coerceAtLeast(0),
+            quietFrom = quietFrom.coerceIn(0, 23),
+            quietTo = quietTo.coerceIn(0, 23),
+            tileRings = if (tileRings == 2) 2 else 1,
+            wearAppRings = if (wearAppRings == 2) 2 else 1,
+        )
+    }
+
+    fun synced(c: Context) = Synced(
+        source(c).name, queue(c), maybeIsOff(c), notifyOff(c), notifyOn(c), quietFrom(c), quietTo(c),
+        notifyTodayChanged(c), notifyTomorrowNew(c),
+        tileRings(c), tileInnerLabels(c), tileShowNext(c), wearAppRings(c), wearAppInnerLabels(c),
+    )
+
+    /** When the shared settings were last changed on any device (ms since epoch; 0 = never). */
+    fun syncTs(c: Context): Long = p(c).getLong("syncTs", 0L)
+
+    /** A shared setting was changed here: stamp it and hand it to the other device. */
+    private fun touch(c: Context) {
+        p(c).edit().putLong("syncTs", System.currentTimeMillis()).apply()
+        SettingsSync.push(c)
+    }
+
+    /**
+     * Takes the shared settings of the other device if they are newer (the newest change wins). Writes the
+     * preferences directly, not through the setters, so the change is not sent back.
+     * Returns what changed: null = nothing was applied, otherwise whether the source or queue changed too.
+     */
+    fun applySynced(c: Context, v: Synced, ts: Long): Boolean? {
+        if (ts <= syncTs(c)) return null
+        val v = v.sanitized()
+        val before = source(c) to queue(c)
+        p(c).edit()
+            .putString("source", v.source).putString("queue", v.queue).putBoolean("maybeOff", v.maybeOff)
+            .putInt("notifyOff", v.notifyOff).putInt("notifyOn", v.notifyOn)
+            .putInt("quietFrom", v.quietFrom).putInt("quietTo", v.quietTo)
+            .putBoolean("notifyTodayChanged", v.notifyToday).putBoolean("notifyTomorrowNew", v.notifyTomorrow)
+            .putInt("tileRings", v.tileRings).putBoolean("tileInnerLabels", v.tileInnerLabels)
+            .putBoolean("tileShowNext", v.tileShowNext)
+            .putInt(if (isWatch) "appRings" else "wearAppRings", v.wearAppRings)
+            .putBoolean(if (isWatch) "appInnerLabels" else "wearAppInnerLabels", v.wearAppInnerLabels)
+            .putLong("syncTs", ts).apply()
+        val dataChanged = before != source(c) to queue(c)
+        if (dataChanged) {
+            // the old schedule no longer applies; a new main queue is no longer an extra one
+            if (before.first != source(c)) Store.clearAll(c) else { Store.clear(c); Store.clear(c, queue(c)) }
+            writeExtras(c, extraQueues(c))
+        }
+        return dataChanged
     }
 }
 
-/** Cache in SharedPreferences: "2026-11-08=0000111...;2026-11-09=..." (48 slots of 30 min). */
+/**
+ * Cache in SharedPreferences: "2026-11-08=0000111...;2026-11-09=..." (48 slots of 30 min).
+ *
+ * Every function takes an optional [q]: null is the main queue (what the watch, the widgets and the reminders use);
+ * an extra queue of the phone app (see [Settings.extraQueues]) has a cache file of its own.
+ */
 object Store {
-    private fun p(c: Context) = c.getSharedPreferences("sched", Context.MODE_PRIVATE)
+    private fun name(q: String?) = if (q == null) "sched" else "sched_$q"
+    private fun p(c: Context, q: String?) = c.getSharedPreferences(name(q), Context.MODE_PRIVATE)
 
     /**
      * Merges new days into the old ones (new ones win), drops days older than yesterday
@@ -175,16 +302,16 @@ object Store {
         (old.filterKeys { it !in missing } + fresh)
             .filterKeys { !it.isBefore(today.minusDays(1)) }.toSortedMap()
 
-    fun save(c: Context, fresh: Map<LocalDate, IntArray>, missing: Collection<LocalDate> = emptyList()) {
+    fun save(c: Context, fresh: Map<LocalDate, IntArray>, missing: Collection<LocalDate> = emptyList(), q: String? = null) {
         val today = LocalDate.now(Schedule.ZONE)
-        val merged = merge(raw(c), fresh, today, missing)
+        val merged = merge(raw(c, q), fresh, today, missing)
         val s = merged.entries.joinToString(";") { (d, f) -> "$d=" + f.joinToString("") }
-        p(c).edit().putString("days", s).putLong("fetched", System.currentTimeMillis())
+        p(c, q).edit().putString("days", s).putLong("fetched", System.currentTimeMillis())
             .remove("error").apply()
     }
 
     /** The last parsed cache string and its result: the tile, the complication and the app read it all the time. */
-    @Volatile private var parsed: Pair<String, Map<LocalDate, IntArray>>? = null
+    private val parsed = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Map<LocalDate, IntArray>>>()
 
     /** Parses "2026-11-08=0000111...;2026-11-09=..."; broken entries (bad date, wrong length) are skipped. */
     fun parseDays(s: String): Map<LocalDate, IntArray> = s.split(";").mapNotNull {
@@ -195,10 +322,10 @@ object Store {
     }.toMap()
 
     /** Slot states 0/1/2 per day. The result is shared between callers: it must not be modified. */
-    fun raw(c: Context): Map<LocalDate, IntArray> {
-        val s = p(c).getString("days", null) ?: return emptyMap()
-        parsed?.let { if (it.first == s) return it.second }
-        return parseDays(s).also { parsed = s to it }
+    fun raw(c: Context, q: String? = null): Map<LocalDate, IntArray> {
+        val s = p(c, q).getString("days", null) ?: return emptyMap()
+        parsed[name(q)]?.let { if (it.first == s) return it.second }
+        return parseDays(s).also { parsed[name(q)] = s to it }
     }
 
     /**
@@ -210,68 +337,82 @@ object Store {
         raw.mapValues { (_, a) -> BooleanArray(a.size) { a[it] == 1 || (maybeIsOff && a[it] == 2) } }
 
     /** true: no power (including "may be off" while switching). */
-    fun load(c: Context, maybeIsOff: Boolean = true): Map<LocalDate, BooleanArray> =
-        flagsOf(raw(c), maybeIsOff)
+    fun load(c: Context, maybeIsOff: Boolean = true, q: String? = null): Map<LocalDate, BooleanArray> =
+        flagsOf(raw(c, q), maybeIsOff)
 
     /** true: switching slot, power may be off. */
-    fun loadMaybe(c: Context): Map<LocalDate, BooleanArray> =
-        raw(c).mapValues { (_, a) -> BooleanArray(a.size) { a[it] == 2 } }
+    fun loadMaybe(c: Context, q: String? = null): Map<LocalDate, BooleanArray> =
+        raw(c, q).mapValues { (_, a) -> BooleanArray(a.size) { a[it] == 2 } }
 
     /** What the user sees: schedule + error. The fetch time is deliberately left out. */
-    fun snapshot(c: Context): String = (p(c).getString("days", "") ?: "") + "|" + (error(c) ?: "")
+    fun snapshot(c: Context, q: String? = null): String = (p(c, q).getString("days", "") ?: "") + "|" + (error(c, q) ?: "")
 
-    fun clear(c: Context) { p(c).edit().clear().apply() }
+    fun clear(c: Context, q: String? = null) { p(c, q).edit().clear().apply() }
 
-    fun fetchedAt(c: Context): Long = p(c).getLong("fetched", 0L)
+    /** The main queue's cache and the caches of all extra queues: the source changed, none of them applies. */
+    fun clearAll(c: Context) {
+        clear(c)
+        Settings.QUEUES.forEach { clear(c, it) }
+    }
+
+    fun fetchedAt(c: Context, q: String? = null): Long = p(c, q).getLong("fetched", 0L)
 
     /** When tomorrow's schedule was last asked of the source (see [Fetcher]: it is rechecked at most hourly). */
-    fun tomorrowCheckedAt(c: Context): Long = p(c).getLong("tomorrowChecked", 0L)
-    fun markTomorrowChecked(c: Context, at: Long) { p(c).edit().putLong("tomorrowChecked", at).apply() }
+    fun tomorrowCheckedAt(c: Context, q: String? = null): Long = p(c, q).getLong("tomorrowChecked", 0L)
+    fun markTomorrowChecked(c: Context, at: Long, q: String? = null) { p(c, q).edit().putLong("tomorrowChecked", at).apply() }
     /** Data older than [STALE_WARN_MS]: show a warning, the schedule may have changed. */
-    fun isStale(c: Context, now: Long = System.currentTimeMillis()): Boolean =
-        fetchedAt(c).let { it > 0 && now - it > STALE_WARN_MS }
+    fun isStale(c: Context, now: Long = System.currentTimeMillis(), q: String? = null): Boolean =
+        fetchedAt(c, q).let { it > 0 && now - it > STALE_WARN_MS }
 
     const val STALE_WARN_MS = 3 * 60 * 60_000L
 
-    fun error(c: Context): String? = p(c).getString("error", null)
-    fun setError(c: Context, msg: String) { p(c).edit().putString("error", msg).apply() }
+    fun error(c: Context, q: String? = null): String? = p(c, q).getString("error", null)
+    fun setError(c: Context, msg: String, q: String? = null) { p(c, q).edit().putString("error", msg).apply() }
 }
 
 object Fetcher {
     /** Blocking call; true on success. The error is written to Store.error. */
-    fun refresh(c: Context): Boolean = try { fetch(c) } catch (e: java.io.IOException) {
-        Store.setError(c, c.getString(R.string.err_no_connection))
+    fun refresh(c: Context, extra: String? = null): Boolean = try { fetch(c, extra) } catch (e: java.io.IOException) {
+        Store.setError(c, c.getString(R.string.err_no_connection), extra)
         false
     } catch (e: FetchError) {
-        Store.setError(c, c.getString(e.res, *e.args))
+        Store.setError(c, c.getString(e.res, *e.args), extra)
         false
     } catch (e: Exception) {
-        Store.setError(c, e.message ?: e.toString())
+        Store.setError(c, e.message ?: e.toString(), extra)
         false
     }
 
-    private fun fetch(c: Context): Boolean {
+    /** The extra queues of the phone app (none on the watch). A failure of one does not stop the others. */
+    fun refreshExtras(c: Context) {
+        for (q in Settings.extraQueues(c)) refresh(c, q)
+    }
+
+    /** [extra] = null: the main queue; otherwise one of the extra queues, which only fills its own cache. */
+    private fun fetch(c: Context, extra: String?): Boolean {
         val source = Settings.source(c)
-        val queue = Settings.queue(c)
+        val queue = extra ?: Settings.queue(c)
         val today = LocalDate.now(Schedule.ZONE)
         val hour = java.time.LocalTime.now(Schedule.ZONE).hour
         // Once tomorrow's schedule is cached it rarely changes: recheck it hourly instead of on every refresh
         // (for POE that saves a whole extra request). Until it is published, keep asking.
         val now = System.currentTimeMillis()
         val tomorrow = today.plusDays(1)
-        val withTomorrow = tomorrow !in Store.raw(c) || now - Store.tomorrowCheckedAt(c) >= TOMORROW_RECHECK_MS
+        val withTomorrow = tomorrow !in Store.raw(c, extra) || now - Store.tomorrowCheckedAt(c, extra) >= TOMORROW_RECHECK_MS
         val days = source.load(queue, today, hour, withTomorrow)
         if (days.isEmpty()) throw FetchError(R.string.err_schedule_not_found, queue)
         // settings changed while the request was in flight: the result is stale
-        if (source != Settings.source(c) || queue != Settings.queue(c)) return false
+        if (source != Settings.source(c) || queue != (extra ?: Settings.queue(c))) return false
+        if (extra != null && extra !in Settings.extraQueues(c)) return false
         // Tomorrow was asked for but is gone (the source withdrew it): don't keep showing the old copy.
         // Today is kept: a missing today is more likely a glitch of the site than a real change.
         val asked = source.requested(today, hour, withTomorrow)
         val missing = asked.filter { it.isAfter(today) && it !in days }
-        val before = Store.raw(c)
-        Store.save(c, days, missing)
-        if (tomorrow in asked) Store.markTomorrowChecked(c, now)
-        Notify.onScheduleSaved(c, before, Store.raw(c))
+        val before = Store.raw(c, extra)
+        Store.save(c, days, missing, extra)
+        if (tomorrow in asked) Store.markTomorrowChecked(c, now, extra)
+        // reminders and the surfaces follow the main queue only
+        if (extra == null) Notify.onScheduleSaved(c, before, Store.raw(c))
         return true
     }
 
@@ -290,6 +431,7 @@ object Fetcher {
         if (Store.snapshot(c) != before) notifyAll(c)
         else if (Store.fetchedAt(c) != fetchedBefore) Surfaces.fetched(c)
         Notify.schedule(c)
+        refreshExtras(c)
         return ok
     }
 

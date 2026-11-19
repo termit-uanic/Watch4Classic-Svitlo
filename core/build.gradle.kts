@@ -21,5 +21,7 @@ android {
 
 dependencies {
     api("androidx.work:work-runtime-ktx:2.9.1")
+    // Wear OS Data Layer: the shared settings of the watch and the phone (SettingsSync)
+    implementation("com.google.android.gms:play-services-wearable:19.0.0")
     testImplementation("junit:junit:4.13.2")
 }
