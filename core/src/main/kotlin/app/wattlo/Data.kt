@@ -72,7 +72,7 @@ object Http {
         try {
             conn.connectTimeout = 15_000
             conn.readTimeout = 20_000
-            conn.setRequestProperty("User-Agent", "LightWatch/1.0 (personal Wear OS tile)")
+            conn.setRequestProperty("User-Agent", "Wattlo/1.0 (Wear OS and Android app; +https://github.com/termit-uanic/wattlo)")
             conn.setRequestProperty("Accept-Language", "uk")
             if (form != null) {
                 conn.requestMethod = "POST"
