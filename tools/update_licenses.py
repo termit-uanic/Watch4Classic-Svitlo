@@ -24,6 +24,8 @@ FAMILIES = [
     ('com.google.errorprone:', 'Error Prone annotations', 'Copyright The Error Prone Authors', 'Apache-2.0'),
     ('com.google.j2objc:', 'J2ObjC annotations', 'Copyright Google Inc.', 'Apache-2.0'),
 ]
+SCHEDULES = ('The schedules come from the website of the Poltava power company, https://www.poe.pl.ua, and from '
+             'https://bezsvitla.com.ua (all the other regions); the app links to both. Wattlo is not an official source.')
 LICENCE_NAMES = {'Apache-2.0': 'Apache License 2.0', 'MIT': 'MIT License', 'BSD-3-Clause': 'BSD 3-Clause License',
                  'Android-SDK-License': 'Android Software Development Kit License'}
 # what the POMs call the licences
@@ -117,7 +119,8 @@ def main():
     head = ('Wattlo is open source. It is built on the work of other people: thank you to the authors.\n\n'
             'Wattlo itself\n-------------\n'
             'Wattlo grew out of the app "Svitlo" by Yehor Shamanskyi (https://github.com/sudoRM-rSLASH/Watch4Classic-Svitlo). '
-            'That code is used under the MIT License; its copyright notice is kept:\n\n' + reflow(mit_orig) + '\n')
+            'That code is used under the MIT License; its copyright notice is kept:\n\n' + reflow(mit_orig) + '\n\n'
+            'Schedules\n---------\n' + SCHEDULES + '\n')
     libs_txt = 'Libraries\n---------\n' + '\n'.join(
         f'* {n}: {LICENCE_NAMES[f["licence"]]}\n  {f["copyright"]}' for n, f in fams.items()) + \
         f'\n* {ICONS[0]}: {LICENCE_NAMES[ICONS[2]]}\n  {ICONS[1]}; {ICONS[3]}\n'
@@ -131,7 +134,10 @@ def main():
           'the phone app shows the same text (Settings → Open-source licenses).\n', '## Wattlo itself\n',
           'Wattlo grew out of the app "Svitlo" by Yehor Shamanskyi, '
           '[sudoRM-rSLASH/Watch4Classic-Svitlo](https://github.com/sudoRM-rSLASH/Watch4Classic-Svitlo). That code is used '
-          'under the MIT License; its copyright notice is kept in [LICENSE](LICENSE).\n', '## Libraries\n',
+          'under the MIT License; its copyright notice is kept in [LICENSE](LICENSE).\n', '## Schedules\n',
+          'The schedules come from the website of the Poltava power company, [poe.pl.ua](https://www.poe.pl.ua), and from '
+          '[bezsvitla.com.ua](https://bezsvitla.com.ua) (all the other regions); the app links to both. Wattlo is not an '
+          'official source.\n', '## Libraries\n',
           '| Library | License | Copyright |', '|---|---|---|']
     for n, f in fams.items():
         md.append(f'| {n} ({len(f["libs"])}) | {LICENCE_NAMES[f["licence"]]} | {f["copyright"]} |')

@@ -23,14 +23,15 @@ import app.wattlo.Fetcher
 import app.wattlo.Notify
 import app.wattlo.Palette
 import app.wattlo.Refresh
+import app.wattlo.Region
 import app.wattlo.Schedule
 import app.wattlo.Settings
 import app.wattlo.Store
 import java.time.ZonedDateTime
 
 /**
- * The setup wizard, shown the first time the app is opened (and again from the settings): a welcome, the main queue,
- * the extra queues, the look of the rings (with a small picture of each) and the reminders. The main queue and the look
+ * The setup wizard, shown the first time the app is opened (and again from the settings): a welcome, the region, the
+ * main queue, the extra queues, the look of the rings (with a small picture of each) and the reminders. The main queue and the look
  * are shared with the watch by the settings synchronisation.
  */
 class SetupActivity : Activity() {
@@ -48,6 +49,7 @@ class SetupActivity : Activity() {
     }
 
     private var step = 0
+    private lateinit var region: Region
     private lateinit var main: String
     private val extras = linkedSetOf<String>()
     /** 0 = one ring of 24 hours, 1 = two rings with the numbers outside, 2 = two rings with all the hours. */
@@ -58,6 +60,7 @@ class SetupActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        region = Settings.region(this)
         main = Settings.queue(this)
         extras.addAll(Settings.extraQueues(this))
         look = when { Settings.appRings(this) == 1 -> 0; Settings.appInnerLabels(this) -> 2; else -> 1 }
@@ -108,18 +111,19 @@ class SetupActivity : Activity() {
         }
         content.removeAllViews()
         content.addView(
-            when (step) { 0 -> welcome(); 1 -> queueStep(); 2 -> extrasStep(); 3 -> lookStep(); else -> remindersStep() },
+            when (step) { 0 -> welcome(); 1 -> regionStep(); 2 -> queueStep(); 3 -> extrasStep(); 4 -> lookStep(); else -> remindersStep() },
             LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
         )
         scroll.scrollTo(0, 0)
         next.text = getString(when (step) { 0 -> R.string.setup_start; LAST -> R.string.setup_finish; else -> R.string.setup_next })
         skip.text = getString(if (step == 0) R.string.setup_skip_all else R.string.setup_skip)
-        skip.visibility = if (step == 0 || step == 2 || step == LAST) View.VISIBLE else View.INVISIBLE
+        skip.visibility = if (step == 0 || step == 3 || step == LAST) View.VISIBLE else View.INVISIBLE
     }
 
     private fun advance() {
         when (step) {
-            1 -> applyQueues() // from now on the schedule of the chosen queue is being fetched: the next steps can show it
+            1 -> applyRegion() // the queues of the next steps are the region's
+            2 -> applyQueues() // from now on the schedule of the chosen queue is being fetched: the next steps can show it
             LAST -> return finishSetup()
         }
         step++
@@ -157,21 +161,38 @@ class SetupActivity : Activity() {
         addView(ui.label(15.5f, Palette.GREY).apply { text = getString(R.string.setup_welcome_body); gravity = Gravity.CENTER; setLineSpacing(0f, 1.2f) }, ui.lp(10f))
     }
 
+    private fun regionStep(): View = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        addView(title(R.string.setup_region_title, R.string.setup_region_body))
+        addView(grid(1, Region.entries.map { r ->
+            chip(getString(r.nameRes), r == region, multi = false) {
+                if (r != region) { region = r; main = Settings.DEFAULT_QUEUE; extras.clear() }
+                show()
+            }
+        }))
+    }
+
+    /** Most regions have 12 queues, Kyiv has 60: then the chips are smaller. */
+    private fun columns() = if (region.queues.size > 12) 5 else 3
+
     private fun queueStep(): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         addView(title(R.string.setup_queue_title, R.string.setup_queue_body))
-        addView(grid(3, Settings.QUEUES.map { q -> chip(q, q == main, multi = false) { main = q; extras.remove(q); show() } }))
+        addView(grid(columns(), region.queues.map { q -> chip(q, q == main, multi = false) { main = q; extras.remove(q); show() } }))
+        // where to find out the queue: the power company's own table for Poltava, the page of the region otherwise
+        val poltava = region == Region.POLTAVA
         addView(ui.label(13.5f, Palette.GREEN).apply {
-            text = getString(R.string.setup_queue_hint)
+            text = getString(if (poltava) R.string.setup_queue_hint else R.string.setup_queue_hint_other)
             setPadding(ui.dp(4f).toInt(), ui.dp(16f).toInt(), 0, 0)
-            setOnClickListener { tryStart(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.poe.pl.ua/disconnection/power-outages/"))) }
+            val url = if (poltava) "https://www.poe.pl.ua/disconnection/power-outages/" else "https://bezsvitla.com.ua/${region.slug}"
+            setOnClickListener { tryStart(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
         })
     }
 
     private fun extrasStep(): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         addView(title(R.string.setup_extras_title, R.string.setup_extras_body))
-        addView(grid(3, Settings.QUEUES.filter { it != main }.map { q ->
+        addView(grid(columns(), region.queues.filter { it != main }.map { q ->
             chip(q, q in extras, multi = true) { if (q in extras) extras.remove(q) else extras.add(q); show() }
         }))
     }
@@ -269,6 +290,14 @@ class SetupActivity : Activity() {
 
     // ---------------------------------------------------------------- applying
 
+    /** The region, right when the user has chosen it: its queues and sources replace the old ones. */
+    private fun applyRegion() {
+        Settings.setRegion(this, region)
+        main = Settings.queue(this)
+        extras.clear()
+        extras.addAll(Settings.extraQueues(this))
+    }
+
     /** The main queue and the extra ones, right when the user has chosen them. */
     private fun applyQueues() {
         Settings.chooseQueue(this, main)
@@ -295,7 +324,7 @@ class SetupActivity : Activity() {
     }
 
     companion object {
-        private const val STEPS = 5
+        private const val STEPS = 6
         private const val LAST = STEPS - 1
 
         fun isDone(c: android.content.Context): Boolean = c.getSharedPreferences("phone_ui", android.content.Context.MODE_PRIVATE).getBoolean("setupDone", false)

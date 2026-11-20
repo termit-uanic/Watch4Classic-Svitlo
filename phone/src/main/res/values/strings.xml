@@ -57,6 +57,8 @@
     <string name="widget_labels_none">No numbers</string>
     <string name="about_title">About</string>
     <string name="about_version">Version %1$s</string>
+    <string name="sources_title">Sources of the schedules</string>
+    <string name="sources_hint">poe.pl.ua, bezsvitla.com.ua: open the sites</string>
     <string name="licenses_title">Open-source licenses</string>
     <string name="licenses_hint">MIT and third-party libraries</string>
     <string name="setup_welcome_title">Welcome to Wattlo</string>
@@ -66,6 +68,9 @@
     <string name="setup_next">Next</string>
     <string name="setup_finish">Finish</string>
     <string name="setup_skip">Skip</string>
+    <string name="setup_region_title">Your region</string>
+    <string name="setup_region_body">Schedules are published for each region. Which one is yours?</string>
+    <string name="setup_queue_hint_other">Not sure? Look it up on bezsvitla.com.ua</string>
     <string name="setup_queue_title">Your queue</string>
     <string name="setup_queue_body">Which queue should Wattlo show by default? The watch, the widgets and the reminders use it.</string>
     <string name="setup_queue_hint">Not sure? Look it up on poe.pl.ua</string>

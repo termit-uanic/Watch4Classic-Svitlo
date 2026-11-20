@@ -22,6 +22,7 @@ import app.wattlo.Settings
 import app.wattlo.SettingsSync
 import app.wattlo.WatchInfo
 import app.wattlo.WatchState
+import app.wattlo.Region
 import app.wattlo.Source
 import app.wattlo.core.R as CoreR
 import kotlin.concurrent.thread
@@ -29,6 +30,7 @@ import kotlin.concurrent.thread
 /** The phone's settings. They belong to this phone; the watch has its own (they will be synchronised later). */
 class SettingsActivity : Activity() {
     private val ui by lazy { Ui(this) }
+    private lateinit var regionRow: TextView
     private lateinit var sourceRow: TextView
     private lateinit var queueRow: TextView
     private lateinit var extraQueuesRow: TextView
@@ -59,6 +61,7 @@ class SettingsActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        regionRow = ui.groupRow(R.drawable.ic_tab_queues) { pickRegion() }
         sourceRow = ui.groupRow(R.drawable.ic_cloud) { pickSource() }
         queueRow = ui.groupRow(R.drawable.ic_tab_queues) { pickQueue() }
         extraQueuesRow = ui.groupRow(R.drawable.ic_add_circle) { pickExtraQueues() }
@@ -115,7 +118,7 @@ class SettingsActivity : Activity() {
             addView(ui.label(26f, Palette.WHITE, bold = true).apply { text = getString(CoreR.string.settings) })
 
             addView(ui.section(getString(R.string.data_title)))
-            addView(ui.group(sourceRow, queueRow, extraQueuesRow, queueLabelsRow, yellow.card), ui.lp())
+            addView(ui.group(regionRow, sourceRow, queueRow, extraQueuesRow, queueLabelsRow, yellow.card), ui.lp())
 
             addView(ui.section(getString(R.string.display_title)))
             addView(ui.group(ringsRow, labelsRow), ui.lp())
@@ -146,6 +149,9 @@ class SettingsActivity : Activity() {
                 ui.group(
                     ui.infoRow(R.drawable.ic_info).apply {
                         text = getString(CoreR.string.two_lines, getString(CoreR.string.app_name), getString(R.string.about_version, versionName()))
+                    },
+                    ui.groupRow(R.drawable.ic_cloud) { showSources() }.apply {
+                        text = getString(CoreR.string.two_lines, getString(R.string.sources_title), getString(R.string.sources_hint))
                     },
                     ui.groupRow(R.drawable.ic_description) { startActivity(Intent(this@SettingsActivity, LicensesActivity::class.java)) }.apply {
                         text = getString(CoreR.string.two_lines, getString(R.string.licenses_title), getString(R.string.licenses_hint))
@@ -185,8 +191,20 @@ class SettingsActivity : Activity() {
 
     // ---------------------------------------------------------------- pickers
 
+    /** Another region has its own queues and sites: the source and the main queue start again from the defaults. */
+    private fun pickRegion() {
+        val all = Region.entries
+        AlertDialog.Builder(this)
+            .setTitle(getString(CoreR.string.region))
+            .setSingleChoiceItems(all.map { getString(it.nameRes) }.toTypedArray(), all.indexOf(Settings.region(this))) { d, i ->
+                d.dismiss()
+                applyDataSetting { Settings.setRegion(this, all[i]) }
+            }
+            .show()
+    }
+
     private fun pickSource() {
-        val all = Source.entries
+        val all = Settings.region(this).sources
         AlertDialog.Builder(this)
             .setTitle(getString(CoreR.string.source))
             .setSingleChoiceItems(all.map { it.host }.toTypedArray(), all.indexOf(Settings.source(this))) { d, i ->
@@ -197,7 +215,7 @@ class SettingsActivity : Activity() {
     }
 
     private fun pickQueue() {
-        val all = Settings.QUEUES
+        val all = Settings.queues(this)
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.queue_main_title))
             .setSingleChoiceItems(
@@ -212,7 +230,7 @@ class SettingsActivity : Activity() {
     /** The extra queues the main screen can switch to; only the main one goes to the watch. */
     private fun pickExtraQueues() {
         val main = Settings.queue(this)
-        val all = Settings.QUEUES.filter { it != main }
+        val all = Settings.queues(this).filter { it != main }
         val chosen = Settings.extraQueues(this).toMutableSet()
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.queues_extra_title))
@@ -267,12 +285,25 @@ class SettingsActivity : Activity() {
             .show()
     }
 
+    /** Where the schedules come from, with a link to each site (bezsvitla.com.ua asks for an active link). */
+    private fun showSources() {
+        val sites = listOf(
+            "poe.pl.ua" to "https://www.poe.pl.ua/disconnection/power-outages/",
+            "bezsvitla.com.ua" to "https://bezsvitla.com.ua/",
+        )
+        AlertDialog.Builder(this)
+            .setTitle(R.string.sources_title)
+            .setItems(sites.map { it.first }.toTypedArray()) { _, i -> tryStart(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(sites[i].second))) }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
     /** A new source or queue: the cached schedule is not valid any more, fetch again. */
     private fun applyDataSetting(change: () -> Unit) {
-        val before = Settings.source(this) to Settings.queue(this)
+        val before = Triple(Settings.region(this), Settings.source(this), Settings.queue(this))
         change()
         render()
-        if (before == Settings.source(this) to Settings.queue(this)) return
+        if (before == Triple(Settings.region(this), Settings.source(this), Settings.queue(this))) return
         Fetcher.notifyAll(this)
         thread { Fetcher.refreshAndNotify(applicationContext) }
     }
@@ -436,6 +467,7 @@ class SettingsActivity : Activity() {
     private fun hourLabel(h: Int) = "%02d:00".format(h)
 
     private fun render() {
+        regionRow.text = getString(CoreR.string.two_lines, getString(CoreR.string.region), getString(Settings.region(this).nameRes))
         sourceRow.text = getString(CoreR.string.two_lines, getString(CoreR.string.source), Settings.source(this).host)
         queueRow.text = getString(CoreR.string.two_lines, getString(R.string.queue_main_title), Settings.queue(this))
         extraQueuesRow.text = getString(

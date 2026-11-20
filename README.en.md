@@ -61,16 +61,17 @@ The screenshots were taken on emulators (a Pixel 8 with Android 14 and a Wear OS
 - **Now**: the state and the countdown, the day ring (one ring of 24 hours or two of 12), the list of outages for today and tomorrow.
 - **Queues**: the main queue (the one the watch, the widgets and the reminders use) and up to 11 extra ones, to see the state of several queues at once.
 - **Widgets**: three sizes: the state, the state with a ring, today and tomorrow. Each widget has its own settings: the queue, the background (dark, tinted by the state, transparent) with an opacity slider, the rings and the hour numbers.
-- **Settings**: the source, the queue, the rule for yellow slots, notifications, and also how the tile and the app look on the watch.
+- **Settings**: the region, the source, the queue, the rule for yellow slots, notifications, and also how the tile and the app look on the watch.
 - The settings shared by the watch and the phone are synchronised between them; each device downloads the schedule itself.
 - Languages: Ukrainian, Russian, English.
 
 ## Sources
 
-Poltava region, queues 1.1–6.2:
-- [poe.pl.ua](https://www.poe.pl.ua/disconnection/power-outages/): the official schedule of Poltavaoblenergo, 30-minute step, yellow for the switching time *(the default)*;
-- [bezsvitla.com.ua](https://bezsvitla.com.ua/poltavska-oblast);
-- [energy-ua.info](https://energy-ua.info).
+Regions: Poltava, Kharkiv, Dnipropetrovsk, Odesa, Kyiv region and the city of Kyiv (Kyiv has 60 sub-queues, 1.1–60.1; the others 12 queues, 1.1–6.2). The region is chosen in the setup wizard and in the settings.
+- [poe.pl.ua](https://www.poe.pl.ua/disconnection/power-outages/): the official schedule of Poltavaoblenergo, 30-minute step, yellow for the switching time; the Poltava region only, where it is *the default*;
+- [bezsvitla.com.ua](https://bezsvitla.com.ua): the schedules of all the regions, 30-minute step. The site allows using its materials with an active link to it: the app has one in "Settings → Sources of the schedules".
+
+Other sites with schedules (energy-ua.info, for example) are not used: their `robots.txt` forbids automated reading.
 
 The schedule can change at any time, so also follow the official announcements of the regional power company. The app is unofficial and is not affiliated with Ukrenergo or any regional power company.
 
@@ -105,7 +106,7 @@ adb install -r phone/build/outputs/apk/release/phone-release.apk
 ```
 
 ### 4. Set it up
-- Open **Wattlo** in the app list and choose the source and your queue (on the watch at the bottom, on the phone in the "Settings" tab).
+- Open **Wattlo** in the app list and choose the region, the source and your queue (on the watch at the bottom, on the phone in the "Settings" tab).
 - **Tile:** swipe to the end of the tiles → "+" → *Wattlo*.
 - **Complication:** press and hold the watch face → *Customize* → a slot → *Wattlo*.
 - **Widgets:** press and hold an empty spot on the phone home screen → *Widgets* → *Wattlo*.

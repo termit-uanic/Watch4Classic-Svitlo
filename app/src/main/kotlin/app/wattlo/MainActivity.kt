@@ -36,6 +36,7 @@ class MainActivity : Activity() {
     private lateinit var lists: LinearLayout
     private lateinit var footer: TextView
     private lateinit var btn: TextView
+    private lateinit var regionRow: TextView
     private lateinit var sourceRow: TextView
     private lateinit var queueRow: TextView
     private lateinit var yellow: SwitchRow
@@ -91,6 +92,7 @@ class MainActivity : Activity() {
         }
         footer = label(11f, Palette.LABEL).apply { gravity = Gravity.CENTER }
         btn = pill(getString(R.string.refresh), Palette.GREEN, Palette.BG).apply { setOnClickListener { refreshNow() } }
+        regionRow = settingRow { pickRegion() }
         sourceRow = settingRow { pickSource() }
         queueRow = settingRow { pickQueue() }
         notifyOffRow = settingRow { onLeadRow(off = true) }
@@ -132,6 +134,7 @@ class MainActivity : Activity() {
             val gap = dp(6f).toInt()
             fun add(v: View, last: Boolean = false) =
                 addView(v, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { if (!last) bottomMargin = gap })
+            add(regionRow)
             add(sourceRow)
             add(queueRow)
             add(yellow.card)
@@ -210,8 +213,20 @@ class MainActivity : Activity() {
         }
     }
 
+    /** Another region has its own queues and sites: the source and the queue start again from the defaults. */
+    private fun pickRegion() {
+        val all = Region.entries
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.region))
+            .setSingleChoiceItems(all.map { getString(it.nameRes) }.toTypedArray(), all.indexOf(Settings.region(this))) { d, i ->
+                d.dismiss()
+                applySettings { Settings.setRegion(this, all[i]) }
+            }
+            .show()
+    }
+
     private fun pickSource() {
-        val all = Source.entries
+        val all = Settings.region(this).sources
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.source))
             .setSingleChoiceItems(all.map { it.host }.toTypedArray(), all.indexOf(Settings.source(this))) { d, i ->
@@ -274,7 +289,7 @@ class MainActivity : Activity() {
     }
 
     private fun pickQueue() {
-        val all = Settings.QUEUES
+        val all = Settings.queues(this)
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.queue))
             .setSingleChoiceItems(all.map { getString(R.string.queue_name, it) }.toTypedArray(), all.indexOf(Settings.queue(this))) { d, i ->
@@ -390,9 +405,9 @@ class MainActivity : Activity() {
     }
 
     private fun applySettings(change: () -> Unit) {
-        val before = Settings.source(this) to Settings.queue(this)
+        val before = Triple(Settings.region(this), Settings.source(this), Settings.queue(this))
         change()
-        if (before == Settings.source(this) to Settings.queue(this)) return
+        if (before == Triple(Settings.region(this), Settings.source(this), Settings.queue(this))) return
         Fetcher.notifyAll(this)
         render()
         busy = false
@@ -452,6 +467,7 @@ class MainActivity : Activity() {
         footer.setTextColor(if (err != null || stale) Palette.AMBER else Palette.LABEL)
 
         val src = Settings.source(this)
+        regionRow.text = getString(R.string.two_lines, getString(R.string.region), getString(Settings.region(this).nameRes))
         sourceRow.text = getString(R.string.two_lines, getString(R.string.source), src.host)
         queueRow.text = getString(R.string.two_lines, getString(R.string.queue), Settings.queue(this))
         val blocked = !Notify.enabled(this)
