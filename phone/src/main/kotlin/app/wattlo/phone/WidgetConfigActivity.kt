@@ -96,6 +96,7 @@ class WidgetConfigActivity : Activity() {
         }
         val width = minOf(resources.displayMetrics.widthPixels, ui.dp(560f).toInt())
         setContentView(ScrollView(this).apply {
+            padForSystemBars()
             addView(column, FrameLayout.LayoutParams(width, WRAP_CONTENT, Gravity.CENTER_HORIZONTAL))
         })
         render()

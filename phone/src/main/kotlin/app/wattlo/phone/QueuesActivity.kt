@@ -37,6 +37,7 @@ class QueuesActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        onBack { openTab(Tab.NOW) }
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val pad = ui.dp(16f).toInt()
         val column = LinearLayout(this).apply {

@@ -60,6 +60,7 @@ class SettingsActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        onBack { openTab(Tab.NOW) }
 
         regionRow = ui.groupRow(R.drawable.ic_tab_queues) { pickRegion() }
         sourceRow = ui.groupRow(R.drawable.ic_cloud) { pickSource() }

@@ -78,17 +78,19 @@ class SetupActivity : Activity() {
         setContentView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(side, 0, side, pad)
+            padForSystemBars()
             addView(dots, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
             addView(scroll, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
             addView(bottom, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
         })
+        onBack { back() }
         show()
     }
 
+    private fun back() { if (step > 0) { step--; show() } else finish() }
+
     @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (step > 0) { step--; show() } else finish()
-    }
+    override fun onBackPressed() = back()
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)

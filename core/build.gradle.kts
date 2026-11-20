@@ -6,7 +6,7 @@ plugins {
 // the settings, the background refresh, the reminders, the day dial and the strings.
 android {
     namespace = "app.wattlo.core"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 26

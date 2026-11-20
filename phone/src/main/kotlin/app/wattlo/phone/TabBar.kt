@@ -4,6 +4,10 @@ import android.app.Activity
 import android.content.Intent
 import android.graphics.PorterDuff
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
+import android.view.WindowInsets
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
@@ -51,11 +55,24 @@ fun Activity.withTabs(content: View, current: Tab): View {
         elevation = ui.dp(10f)
         for (t in Tab.entries) addView(tabView(ui, t, t == current))
     }
+    val barParams = FrameLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
+        bottomMargin = ui.dp(14f).toInt()
+    }
     return FrameLayout(this).apply {
         addView(content, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
-        addView(bar, FrameLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
-            bottomMargin = ui.dp(14f).toInt()
-        })
+        addView(bar, barParams)
+        if (Build.VERSION.SDK_INT >= 35) {
+            // edge to edge: the content scrolls under the status bar and the navigation bar, the tab bar floats above the latter
+            val margin = barParams.bottomMargin
+            (content as? android.view.ViewGroup)?.clipToPadding = false
+            setOnApplyWindowInsetsListener { _, insets ->
+                val i = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+                content.setPadding(i.left, i.top, i.right, i.bottom)
+                barParams.bottomMargin = margin + i.bottom
+                bar.layoutParams = barParams
+                insets
+            }
+        }
     }
 }
 
@@ -80,3 +97,27 @@ private fun Activity.tabView(ui: Ui, t: Tab, selected: Boolean) = LinearLayout(t
 fun clock(t: java.time.ZonedDateTime, now: java.time.ZonedDateTime): String =
     if (t.hour == 0 && t.minute == 0 && t.toLocalDate() != now.toLocalDate()) "24:00"
     else t.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+
+/**
+ * The system bars of a screen that draws edge to edge (Android 15 makes every app do it): the insets of the status
+ * bar, the display cutout and the navigation bar, as the padding of this view on top of the padding it has.
+ * Before Android 15 the system keeps the content clear of the bars by itself, so nothing is added.
+ */
+fun View.padForSystemBars() {
+    if (Build.VERSION.SDK_INT < 35) return
+    val l = paddingLeft; val t = paddingTop; val r = paddingRight; val b = paddingBottom
+    setOnApplyWindowInsetsListener { v, insets ->
+        val i = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+        v.setPadding(l + i.left, t + i.top, r + i.right, b + i.bottom)
+        insets
+    }
+}
+
+/**
+ * The back gesture. From Android 13 the system asks the registered callbacks (and from Android 16 only them:
+ * onBackPressed is not called any more); older versions call onBackPressed, which the screens also override.
+ */
+fun Activity.onBack(action: () -> Unit) {
+    if (Build.VERSION.SDK_INT < 33) return
+    onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, OnBackInvokedCallback { action() })
+}
