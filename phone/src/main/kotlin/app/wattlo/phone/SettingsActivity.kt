@@ -82,7 +82,7 @@ class SettingsActivity : Activity() {
                 Settings.setTileInnerLabels(this, it == 1)
             }
         })
-        tileNext = ui.switchRow(R.drawable.ic_tab_now, watchOnly {
+        tileNext = ui.switchRow(CoreR.drawable.ic_bulb_mono, watchOnly {
             Settings.setTileShowNext(this, !Settings.tileShowNext(this))
             render()
         })
@@ -157,7 +157,7 @@ class SettingsActivity : Activity() {
                     ui.groupRow(R.drawable.ic_description) { startActivity(Intent(this@SettingsActivity, LicensesActivity::class.java)) }.apply {
                         text = getString(CoreR.string.two_lines, getString(R.string.licenses_title), getString(R.string.licenses_hint))
                     },
-                    ui.groupRow(R.drawable.ic_tab_now) { startActivity(Intent(this@SettingsActivity, SetupActivity::class.java)) }.apply {
+                    ui.groupRow(CoreR.drawable.ic_bulb_mono) { startActivity(Intent(this@SettingsActivity, SetupActivity::class.java)) }.apply {
                         text = getString(CoreR.string.two_lines, getString(R.string.setup_rerun_title), getString(R.string.setup_rerun_hint))
                     },
                 ),

@@ -205,7 +205,7 @@ class SetupActivity : Activity() {
         addView(lookCard(0, R.string.setup_look_one, R.string.setup_look_one_hint))
         addView(lookCard(1, R.string.setup_look_two, R.string.setup_look_two_hint), ui.lp(10f))
         addView(lookCard(2, R.string.setup_look_two_all, R.string.setup_look_two_all_hint), ui.lp(10f))
-        val same = ui.switchRow(R.drawable.ic_tab_now) { sameOnWatch = !sameOnWatch; show() }
+        val same = ui.switchRow(app.wattlo.core.R.drawable.ic_bulb_mono) { sameOnWatch = !sameOnWatch; show() }
         same.label.text = getString(R.string.setup_same_on_watch)
         same.sw.isChecked = sameOnWatch
         addView(ui.group(same.card), ui.lp(16f))

@@ -60,7 +60,8 @@ def mono_icon(size, bg, fg):
     glass = arc_pts(54, 44, 25, -90, 54.3) + [(66.5, 74), (41.5, 74)] + arc_pts(54, 44, 25, 125.7, 270)
     stroke(d, [tf(p) for p in glass] + [tf(glass[0])], 6 * 0.85, fg, k)
     stroke(d, [tf(p) for p in [(44, 38), (49, 52), (54, 41), (59, 52), (64, 38)]], 5 * 0.85, fg, k)
-    pill(d, 44, 78, 64, 84, fg, k)
+    pill(d, 44.75, 79.5, 63.25, 84, fg, k)  # the two bases, clear of the glass edge (y=77)
+    pill(d, 48.5, 86, 59.5, 90, fg, k)
     return im.resize((size, size), Image.LANCZOS)
 
 

@@ -20,7 +20,7 @@ import app.wattlo.core.R as CoreR
 
 /** The three screens of the phone app, in the order of the tab bar. */
 enum class Tab(val icon: Int, val label: Int, val target: Class<out Activity>) {
-    NOW(R.drawable.ic_tab_now, R.string.tab_now, MainActivity::class.java),
+    NOW(CoreR.drawable.ic_bulb_mono, R.string.tab_now, MainActivity::class.java),
     QUEUES(R.drawable.ic_tab_queues, R.string.tab_queues, QueuesActivity::class.java),
     SETTINGS(R.drawable.ic_tab_settings, CoreR.string.settings, SettingsActivity::class.java),
 }

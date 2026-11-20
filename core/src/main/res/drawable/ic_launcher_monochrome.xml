@@ -24,6 +24,9 @@
         android:pathData="M44,38 L49,52 L54,41 L59,52 L64,38" />
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M47,78 h14 a3,3 0 0,1 0,6 h-14 a3,3 0 0,1 0,-6 Z" />
+        android:pathData="M47,79.5 h14 a2.25,2.25 0 0,1 0,4.5 h-14 a2.25,2.25 0 0,1 0,-4.5 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M50.5,86 h7 a2,2 0 0,1 0,4 h-7 a2,2 0 0,1 0,-4 Z" />
     </group>
 </vector>
