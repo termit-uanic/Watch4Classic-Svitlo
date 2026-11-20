@@ -32,9 +32,9 @@ tools/build_play_bundles.sh 1      # номер сборки: для каждо�
 | Сайт | https://termit-uanic.github.io/wattlo/ |
 | Политика конфиденциальности | https://termit-uanic.github.io/wattlo/privacy/ |
 | Значок | `store/ic_launcher_512.png` (512×512) |
-| Графика (feature graphic) | 1024×500 — ещё не нарисована |
-| Скриншоты телефона | 2–8 штук, `docs/screenshots/phone-*.png` подойдут как основа |
-| Скриншоты часов | отдельный набор для Wear OS (квадратные, `docs/screenshots/watch-*.png`) |
+| Графика (feature graphic) | `store/feature-graphic-{uk,ru,en}.png` (1024×500); рисует `store/render_feature_graphic.py` |
+| Скриншоты телефона | `store/screenshots/phone/` (1080×2160, соотношение 2:1, украинский интерфейс); до 8 штук. Большой виджет «сьогодні й завтра» в набор ещё не входит: его надо снять, когда источники опубликуют график на завтра, иначе правая половина пустая |
+| Скриншоты часов | `store/screenshots/wear/` (454×454, круглые, для Wear OS отдельный набор) |
 
 ## 4. Анкеты
 
