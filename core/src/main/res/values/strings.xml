@@ -59,6 +59,13 @@
     <string name="notifications">Notifications</string>
     <string name="source">Source</string>
     <string name="queue">Queue</string>
+    <string name="region">Region</string>
+    <string name="region_poltava">Poltava region</string>
+    <string name="region_kharkiv">Kharkiv region</string>
+    <string name="region_dnipro">Dnipropetrovsk region</string>
+    <string name="region_odesa">Odesa region</string>
+    <string name="region_kyiv_oblast">Kyiv region</string>
+    <string name="region_kyiv">Kyiv city</string>
     <string name="before_off">Before power-off</string>
     <string name="before_on">Before power-on</string>
     <string name="today">Today</string>

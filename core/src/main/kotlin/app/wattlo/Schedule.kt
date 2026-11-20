@@ -15,43 +15,6 @@ object Schedule {
     val ZONE: ZoneId = ZoneId.of("Europe/Kiev") // "Kyiv" is missing from older tzdata
     const val SLOTS = 48
 
-    // ---------------------------------------------------------------- energy-ua.info
-
-    private val EU_DAY_RE = Regex(
-        """ch_day_title">([^<]*)</h4>(.*?)(?=ch_day_title|</main>|\z)""",
-        RegexOption.DOT_MATCHES_ALL
-    )
-    private val EU_HOUR_RE = Regex(
-        """hour_info_from">(\d\d):\d\d</i>.*?<span class="hour_status ?([^"]*)""",
-        RegexOption.DOT_MATCHES_ALL
-    )
-
-    /** energy-ua.info: hourly scale; days without all 24 hours are skipped. */
-    fun parseEnergyUa(html: String, today: LocalDate): Map<LocalDate, BooleanArray> {
-        val out = LinkedHashMap<LocalDate, BooleanArray>()
-        for (day in EU_DAY_RE.findAll(html)) {
-            val title = day.groupValues[1].lowercase()
-            val date = when {
-                "сьогодні" in title -> today
-                "завтра" in title -> today.plusDays(1)
-                else -> continue
-            }
-            val flags = BooleanArray(SLOTS)
-            val seen = BooleanArray(24)
-            for (h in EU_HOUR_RE.findAll(day.groupValues[2])) {
-                val hour = h.groupValues[1].toInt()
-                if (hour in 0..23) {
-                    val off = "hour_active" in h.groupValues[2]
-                    flags[hour * 2] = off
-                    flags[hour * 2 + 1] = off
-                    seen[hour] = true
-                }
-            }
-            if (seen.all { it }) out[date] = flags
-        }
-        return out
-    }
-
     // ---------------------------------------------------------------- bezsvitla.com.ua
 
     private val BZ_DATE_RE = Regex("""data-schedule-date="(\d{4}-\d\d-\d\d)"""")

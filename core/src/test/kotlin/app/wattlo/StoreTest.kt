@@ -57,8 +57,7 @@ class StoreTest {
         assertEquals(listOf(today, tomorrow), Source.POE.requested(today, hour = 18, withTomorrow = true))
     }
 
-    @Test fun requested_otherSourcesAlwaysAskForTomorrow() {
+    @Test fun requested_bezsvitlaAlwaysAsksForTomorrow() {
         assertEquals(listOf(today, tomorrow), Source.BEZSVITLA.requested(today, hour = 3))
-        assertEquals(listOf(today, tomorrow), Source.ENERGY_UA.requested(today, hour = 3))
     }
 }

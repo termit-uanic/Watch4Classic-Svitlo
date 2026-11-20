@@ -46,6 +46,13 @@
     <string name="notifications">Сповіщення</string>
     <string name="source">Джерело</string>
     <string name="queue">Черга</string>
+    <string name="region">Регіон</string>
+    <string name="region_poltava">Полтавська область</string>
+    <string name="region_kharkiv">Харківська область</string>
+    <string name="region_dnipro">Дніпропетровська область</string>
+    <string name="region_odesa">Одеська область</string>
+    <string name="region_kyiv_oblast">Київська область</string>
+    <string name="region_kyiv">Київ</string>
     <string name="before_off">Перед вимкненням</string>
     <string name="before_on">Перед увімкненням</string>
     <string name="today">Сьогодні</string>

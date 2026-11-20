@@ -21,21 +21,20 @@ import java.util.concurrent.TimeUnit
 /** Where the schedule comes from. Slot states: 0 = power on, 1 = off, 2 = switching (may be off). */
 enum class Source(val host: String) {
     POE("poe.pl.ua"),
-    BEZSVITLA("bezsvitla.com.ua"),
-    ENERGY_UA("energy-ua.info");
+    BEZSVITLA("bezsvitla.com.ua");
 
     /**
      * Dates a [load] call asks the source about. A date that is requested but missing from the result
      * has no (or no longer has a) published schedule. [hour] is the current hour in [Schedule.ZONE].
      * POE needs a separate request per day, so tomorrow can be skipped with [withTomorrow]
-     * (the other sources return both days in one response).
+     * (the other source returns both days in one response).
      */
     fun requested(today: LocalDate, hour: Int, withTomorrow: Boolean = true): List<LocalDate> =
         // POE publishes tomorrow's schedule in the evening, so it is not requested before noon
         if (this == POE && (hour < 12 || !withTomorrow)) listOf(today) else listOf(today, today.plusDays(1))
 
     fun load(
-        queue: String, today: LocalDate, hour: Int = java.time.LocalTime.now(Schedule.ZONE).hour,
+        region: Region, queue: String, today: LocalDate, hour: Int = java.time.LocalTime.now(Schedule.ZONE).hour,
         withTomorrow: Boolean = true,
     ): Map<LocalDate, IntArray> = when (this) {
         POE -> {
@@ -50,9 +49,7 @@ enum class Source(val host: String) {
             }
             out
         }
-        BEZSVITLA -> Schedule.parseBezsvitla(Http.request("https://bezsvitla.com.ua/poltavska-oblast"), today, queue)
-            .mapValues { bits(it.value) }
-        ENERGY_UA -> Schedule.parseEnergyUa(Http.request("https://energy-ua.info/cherga/${queue.replace('.', '-')}"), today)
+        BEZSVITLA -> Schedule.parseBezsvitla(Http.request("https://bezsvitla.com.ua/${region.slug}"), today, queue)
             .mapValues { bits(it.value) }
     }
 
@@ -61,6 +58,32 @@ enum class Source(val host: String) {
         fun bits(f: BooleanArray) = IntArray(f.size) { if (f[it]) 1 else 0 }
     }
 }
+
+/**
+ * The regions with a published schedule: the page of the region on bezsvitla.com.ua is [slug]; [queues] are the
+ * groups the region's operator uses (Kyiv has 60 sub-queues, everywhere else 12); [sources] are the sites that
+ * have its schedule, the first one is the default. Poltava also has the official schedule of its own power
+ * company (poe.pl.ua).
+ */
+enum class Region(
+    val slug: String, @androidx.annotation.StringRes val nameRes: Int, val queues: List<String>, val sources: List<Source>,
+) {
+    POLTAVA("poltavska-oblast", R.string.region_poltava, TWELVE, listOf(Source.POE, Source.BEZSVITLA)),
+    KHARKIV("kharkivska-oblast", R.string.region_kharkiv, TWELVE, listOf(Source.BEZSVITLA)),
+    DNIPRO("dnipropetrovska-oblast", R.string.region_dnipro, TWELVE, listOf(Source.BEZSVITLA)),
+    ODESA("odeska-oblast", R.string.region_odesa, TWELVE, listOf(Source.BEZSVITLA)),
+    KYIV_OBLAST("kyivska-oblast", R.string.region_kyiv_oblast, TWELVE, listOf(Source.BEZSVITLA)),
+    KYIV("kyiv", R.string.region_kyiv, (1..60).map { "$it.1" }, listOf(Source.BEZSVITLA));
+
+    companion object {
+        /** Every queue name of every region: their caches share a naming scheme. */
+        val ALL_QUEUES: List<String> get() = entries.flatMap { it.queues }.distinct()
+        fun of(name: String?): Region = entries.firstOrNull { it.name == name } ?: POLTAVA
+    }
+}
+
+// the 12 groups of most operators: 1.1, 1.2, 2.1 ... 6.2
+private val TWELVE = (1..6).flatMap { q -> (1..2).map { "$q.$it" } }
 
 /** A fetch failure with a localized message: resolved with a Context where the error is stored. */
 class FetchError(@androidx.annotation.StringRes val res: Int, vararg val args: Any) : Exception()
@@ -98,17 +121,28 @@ object Settings {
     /** Set by the watch app: its display options are the ones the phone sets for the watch (see [Synced]). */
     @Volatile var isWatch = false
 
-    val QUEUES = (1..6).flatMap { q -> (1..2).map { "$q.$it" } }
+    /** The 12 groups of the official poe.pl.ua table (and of most regions); a region can have its own, see [Region]. */
+    val QUEUES = Region.POLTAVA.queues
 
     private fun p(c: Context) = c.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
-    fun source(c: Context): Source =
-        runCatching { Source.valueOf(p(c).getString("source", null)!!) }.getOrDefault(Source.POE)
+    /** Poltava region until the user picks another (the setup wizard asks first thing). */
+    fun region(c: Context): Region = Region.of(p(c).getString("region", null))
+
+    /** The queues of the chosen region. */
+    fun queues(c: Context): List<String> = region(c).queues
+
+    /** The stored source if the region has it, else the region's own (a source that is gone, like energy-ua.info, too). */
+    fun source(c: Context): Source {
+        val r = region(c)
+        val stored = runCatching { Source.valueOf(p(c).getString("source", null)!!) }.getOrNull()
+        return stored?.takeIf { it in r.sources } ?: r.sources.first()
+    }
 
     /** The queue until the user picks one (the setup wizard asks first thing). */
     const val DEFAULT_QUEUE = "1.1"
 
-    fun queue(c: Context): String = p(c).getString("queue", null)?.takeIf { it in QUEUES } ?: DEFAULT_QUEUE
+    fun queue(c: Context): String = p(c).getString("queue", null)?.takeIf { it in queues(c) } ?: DEFAULT_QUEUE
 
     /**
      * The user picked this queue (the setup wizard): store it and share it with the other device even when it is
@@ -197,12 +231,29 @@ object Settings {
 
     /** Changing the source/queue clears the cache: the old schedule no longer applies. */
     fun set(c: Context, source: Source = source(c), queue: String = queue(c)) {
-        if (source == source(c) && queue == queue(c)) return
-        val sourceChanged = source != source(c)
-        p(c).edit().putString("source", source.name).putString("queue", queue).apply()
+        val r = region(c)
+        val src = source.takeIf { it in r.sources } ?: r.sources.first()
+        val q = queue.takeIf { it in r.queues } ?: DEFAULT_QUEUE
+        if (src == source(c) && q == queue(c)) return
+        val sourceChanged = src != source(c)
+        p(c).edit().putString("source", src.name).putString("queue", q).apply()
         // the new main queue is no longer an extra one
-        if (queue in extraQueues(c)) writeExtras(c, extraQueues(c) - queue)
-        if (sourceChanged) Store.clearAll(c) else { Store.clear(c); Store.clear(c, queue) }
+        if (q in extraQueues(c)) writeExtras(c, extraQueues(c) - q)
+        if (sourceChanged) Store.clearAll(c) else { Store.clear(c); Store.clear(c, q) }
+        touch(c)
+    }
+
+    /**
+     * Another region: its operator has its own queues and its own sites, so the source goes to the region's
+     * default, the queue to [DEFAULT_QUEUE], the extra queues and their names go away, and no cache applies.
+     */
+    fun setRegion(c: Context, region: Region) {
+        if (region == region(c)) return
+        val e = p(c).edit().putString("region", region.name).putString("source", region.sources.first().name)
+            .putString("queue", DEFAULT_QUEUE).putString("extraQueues", "")
+        Region.ALL_QUEUES.forEach { e.remove("label_$it") }
+        e.apply()
+        Store.clearAll(c)
         touch(c)
     }
 
@@ -211,11 +262,12 @@ object Settings {
      * synchronised, and the watch, the widgets and the reminders only ever use the main queue.
      */
     fun extraQueues(c: Context): List<String> =
-        (p(c).getString("extraQueues", "") ?: "").split(",").filter { it in QUEUES }.distinct().filter { it != queue(c) }
+        (p(c).getString("extraQueues", "") ?: "").split(",").filter { it in queues(c) }.distinct().filter { it != queue(c) }
 
     fun setExtraQueues(c: Context, list: Collection<String>) {
         val old = extraQueues(c)
-        val new = list.filter { it in QUEUES && it != queue(c) }.distinct().sortedBy { QUEUES.indexOf(it) }
+        val all = queues(c)
+        val new = list.filter { it in all && it != queue(c) }.distinct().sortedBy { all.indexOf(it) }
         writeExtras(c, new)
         (old - new.toSet()).forEach { Store.clear(c, it) } // no cache for a queue that is no longer shown
     }
@@ -226,7 +278,7 @@ object Settings {
     fun queueLabel(c: Context, q: String): String = p(c).getString("label_$q", "").orEmpty()
 
     fun setQueueLabel(c: Context, q: String, label: String) {
-        if (q !in QUEUES) return
+        if (q !in Region.ALL_QUEUES) return
         val clean = label.trim().take(MAX_LABEL)
         p(c).edit().apply { if (clean.isEmpty()) remove("label_$q") else putString("label_$q", clean) }.apply()
     }
@@ -246,11 +298,20 @@ object Settings {
         // how the watch looks: the tile, and the app screens of the watch
         val tileRings: Int = 1, val tileInnerLabels: Boolean = true, val tileShowNext: Boolean = true,
         val wearAppRings: Int = 1, val wearAppInnerLabels: Boolean = true,
+        // a device without a region (an older build) is in the Poltava region
+        val region: String = Region.POLTAVA.name,
     ) {
         /** Values from the other device are not trusted blindly: anything out of range falls back to the defaults. */
-        fun sanitized() = copy(
-            source = if (Source.values().any { it.name == source }) source else Source.POE.name,
-            queue = queue.takeIf { it in QUEUES } ?: DEFAULT_QUEUE,
+        fun sanitized(): Synced {
+            val r = Region.of(region)
+            return copy(
+                region = r.name,
+                source = if (r.sources.any { it.name == source }) source else r.sources.first().name,
+                queue = queue.takeIf { it in r.queues } ?: DEFAULT_QUEUE,
+            ).clamped()
+        }
+
+        private fun clamped() = copy(
             notifyOff = notifyOff.coerceAtLeast(0),
             notifyOn = notifyOn.coerceAtLeast(0),
             quietFrom = quietFrom.coerceIn(0, 23),
@@ -263,7 +324,7 @@ object Settings {
     fun synced(c: Context) = Synced(
         source(c).name, queue(c), maybeIsOff(c), notifyOff(c), notifyOn(c), quietFrom(c), quietTo(c),
         notifyTodayChanged(c), notifyTomorrowNew(c),
-        tileRings(c), tileInnerLabels(c), tileShowNext(c), wearAppRings(c), wearAppInnerLabels(c),
+        tileRings(c), tileInnerLabels(c), tileShowNext(c), wearAppRings(c), wearAppInnerLabels(c), region(c).name,
     )
 
     /** When the shared settings were last changed on any device (ms since epoch; 0 = never). */
@@ -283,9 +344,9 @@ object Settings {
     fun applySynced(c: Context, v: Synced, ts: Long): Boolean? {
         if (ts <= syncTs(c)) return null
         val v = v.sanitized()
-        val before = source(c) to queue(c)
+        val before = Triple(region(c), source(c), queue(c))
         p(c).edit()
-            .putString("source", v.source).putString("queue", v.queue).putBoolean("maybeOff", v.maybeOff)
+            .putString("region", v.region).putString("source", v.source).putString("queue", v.queue).putBoolean("maybeOff", v.maybeOff)
             .putInt("notifyOff", v.notifyOff).putInt("notifyOn", v.notifyOn)
             .putInt("quietFrom", v.quietFrom).putInt("quietTo", v.quietTo)
             .putBoolean("notifyTodayChanged", v.notifyToday).putBoolean("notifyTomorrowNew", v.notifyTomorrow)
@@ -294,11 +355,18 @@ object Settings {
             .putInt(if (isWatch) "appRings" else "wearAppRings", v.wearAppRings)
             .putBoolean(if (isWatch) "appInnerLabels" else "wearAppInnerLabels", v.wearAppInnerLabels)
             .putLong("syncTs", ts).apply()
-        val dataChanged = before != source(c) to queue(c)
+        val dataChanged = before != Triple(region(c), source(c), queue(c))
         if (dataChanged) {
             // the old schedule no longer applies; a new main queue is no longer an extra one
-            if (before.first != source(c)) Store.clearAll(c) else { Store.clear(c); Store.clear(c, queue(c)) }
-            writeExtras(c, extraQueues(c))
+            if (before.first != region(c)) {
+                // another region: its extra queues and their names do not apply either
+                writeExtras(c, emptyList())
+                Region.ALL_QUEUES.forEach { p(c).edit().remove("label_$it").apply() }
+                Store.clearAll(c)
+            } else {
+                if (before.second != source(c)) Store.clearAll(c) else { Store.clear(c); Store.clear(c, queue(c)) }
+                writeExtras(c, extraQueues(c))
+            }
         }
         return dataChanged
     }
@@ -375,7 +443,7 @@ object Store {
     /** The main queue's cache and the caches of all extra queues: the source changed, none of them applies. */
     fun clearAll(c: Context) {
         clear(c)
-        Settings.QUEUES.forEach { clear(c, it) }
+        Region.ALL_QUEUES.forEach { clear(c, it) }
     }
 
     fun fetchedAt(c: Context, q: String? = null): Long = p(c, q).getLong("fetched", 0L)
@@ -413,6 +481,7 @@ object Fetcher {
 
     /** [extra] = null: the main queue; otherwise one of the extra queues, which only fills its own cache. */
     private fun fetch(c: Context, extra: String?): Boolean {
+        val region = Settings.region(c)
         val source = Settings.source(c)
         val queue = extra ?: Settings.queue(c)
         val today = LocalDate.now(Schedule.ZONE)
@@ -422,10 +491,10 @@ object Fetcher {
         val now = System.currentTimeMillis()
         val tomorrow = today.plusDays(1)
         val withTomorrow = tomorrow !in Store.raw(c, extra) || now - Store.tomorrowCheckedAt(c, extra) >= TOMORROW_RECHECK_MS
-        val days = source.load(queue, today, hour, withTomorrow)
+        val days = source.load(region, queue, today, hour, withTomorrow)
         if (days.isEmpty()) throw FetchError(R.string.err_schedule_not_found, queue)
         // settings changed while the request was in flight: the result is stale
-        if (source != Settings.source(c) || queue != (extra ?: Settings.queue(c))) return false
+        if (region != Settings.region(c) || source != Settings.source(c) || queue != (extra ?: Settings.queue(c))) return false
         if (extra != null && extra !in Settings.extraQueues(c)) return false
         // Tomorrow was asked for but is gone (the source withdrew it): don't keep showing the old copy.
         // Today is kept: a missing today is more likely a glitch of the site than a real change.

@@ -63,6 +63,7 @@ object SettingsSync {
             Log.i(TAG, "push queue=${v.queue} ts=${Settings.syncTs(c)}")
             val req = PutDataMapRequest.create(PATH).also {
                 it.dataMap.putLong("ts", Settings.syncTs(c))
+                it.dataMap.putString("region", v.region)
                 it.dataMap.putString("source", v.source)
                 it.dataMap.putString("queue", v.queue)
                 it.dataMap.putBoolean("maybeOff", v.maybeOff)
@@ -107,6 +108,7 @@ object SettingsSync {
             m.getBoolean("notifyToday", false), m.getBoolean("notifyTomorrow", false),
             m.getInt("tileRings", 1), m.getBoolean("tileInnerLabels", true), m.getBoolean("tileShowNext", true),
             m.getInt("wearAppRings", 1), m.getBoolean("wearAppInnerLabels", true),
+            m.getString("region", Region.POLTAVA.name), // an older device sends none
         )
         val dataChanged = Settings.applySynced(app, v, m.getLong("ts")) ?: return
         Log.i(TAG, "applied queue=${v.queue} ts=${m.getLong("ts")} (source/queue changed: $dataChanged)")

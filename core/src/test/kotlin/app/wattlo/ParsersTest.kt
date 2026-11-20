@@ -49,21 +49,28 @@ class ParsersTest {
     @Test fun bezsvitla_otherQueueNotInFixture() =
         assertTrue(Schedule.parseBezsvitla(res("bezsvitla.html"), day, "1.1").isEmpty())
 
-    // ---------------------------------------------------------------- energy-ua
+    // ---------------------------------------------------------------- bezsvitla: Kyiv (60 sub-queues "1.1" .. "60.1")
 
-    @Test fun energyUa_synthetic() {
-        val hours = (0..23).joinToString("") { h ->
-            val off = h in 8..11
-            """<i class="hour_info_from">%02d:00</i><span class="hour_status${if (off) " hour_active" else ""}">""".format(h)
-        }
-        val html = """<h4 class="ch_day_title">Сьогодні</h4>$hours</main>"""
-        val m = Schedule.parseEnergyUa(html, day)
-        assertEquals("0".repeat(16) + "1".repeat(8) + "0".repeat(24), m[day]!!.str())
+    /** Real cards of the Kyiv page (queues 1.1, 10.1 and 11.1), saved on 2026-11-20. */
+    @Test fun bezsvitla_kyivSubQueue() {
+        val m = Schedule.parseBezsvitla(res("bezsvitla_kyiv.html"), LocalDate.of(2026, 11, 20), "10.1")
+        // the card has no schedule for tomorrow yet ("[]")
+        assertEquals(setOf(LocalDate.of(2026, 11, 20)), m.keys)
+        assertEquals("0".repeat(22) + "1".repeat(10) + "0".repeat(10) + "1".repeat(6), m.getValue(LocalDate.of(2026, 11, 20)).str())
     }
 
-    /** energy-ua is currently behind Cloudflare: the parser must return nothing, not garbage. */
-    @Test fun energyUa_cloudflare() =
-        assertTrue(Schedule.parseEnergyUa(res("energyua_cloudflare.html"), day).isEmpty())
+    @Test fun bezsvitla_kyivQueue1_1IsNotQueue11_1() {
+        val d = LocalDate.of(2026, 11, 20)
+        val a = Schedule.parseBezsvitla(res("bezsvitla_kyiv.html"), d, "1.1").getValue(d)
+        val b = Schedule.parseBezsvitla(res("bezsvitla_kyiv.html"), d, "11.1").getValue(d)
+        assertEquals(Schedule.SLOTS, a.size)
+        assertTrue(a.str() != b.str())
+        // 1.1: no power from 04:30 to 07:30
+        assertEquals("111111", a.str().substring(9, 15))
+    }
+
+    @Test fun bezsvitla_kyivQueueNotInFixture() =
+        assertTrue(Schedule.parseBezsvitla(res("bezsvitla_kyiv.html"), LocalDate.of(2026, 11, 20), "2.1").isEmpty())
 
     // ---------------------------------------------------------------- notifications
 
