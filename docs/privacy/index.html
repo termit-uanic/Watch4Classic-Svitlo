@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wattlo: політика конфіденційності · Privacy policy</title>
+<link rel="icon" href="../icon.png">
+<style>
+  :root { --bg:#fff; --fg:#1b1f24; --muted:#5b6470; --card:#f3f5f7; --accent:#12803f; --line:#d9dee3; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0e1013; --fg:#e8eaed; --muted:#9aa3ad; --card:#181b20; --accent:#4ade80; --line:#2a2f36; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:24px 16px 64px; }
+  header { display:flex; align-items:center; gap:14px; margin-bottom:8px; }
+  header img { width:56px; height:56px; border-radius:50%; }
+  h1 { font-size:1.6rem; margin:0; }
+  h2 { font-size:1.15rem; margin:1.8em 0 .4em; }
+  nav { display:flex; gap:8px; margin:16px 0 8px; flex-wrap:wrap; }
+  nav a { padding:6px 14px; border:1px solid var(--line); border-radius:999px; color:var(--fg); text-decoration:none; }
+  nav a[aria-current="true"] { background:var(--accent); border-color:var(--accent); color:#fff; }
+  a { color:var(--accent); }
+  .note { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 16px; }
+  .muted { color:var(--muted); font-size:.92rem; }
+  table { border-collapse:collapse; width:100%; font-size:.95rem; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  section[hidden] { display:none; }
+</style>
+</head>
+<body>
+<main>
+<header><img src="../icon.png" alt=""><h1>Wattlo</h1></header>
+<nav id="langs">
+  <a href="#uk" data-lang="uk">Українська</a>
+  <a href="#ru" data-lang="ru">Русский</a>
+  <a href="#en" data-lang="en">English</a>
+</nav>
+
+<!-- ===================================================================== УКРАЇНСЬКА -->
+<section id="uk" lang="uk">
+<h2 style="font-size:1.35rem;margin-top:.6em">Політика конфіденційності</h2>
+<p class="muted">Остання зміна: 20 листопада 2026 року</p>
+
+<p class="note"><b>Wattlo — неофіційний застосунок.</b> Він не пов'язаний із НЕК «Укренерго», Міністерством енергетики, обленерго, ДТЕК, YASNO чи будь-яким іншим оператором мереж і не представляє їх. Графіки беруться з публічних джерел і можуть відрізнятися від фактичних відключень: слідкуйте також за офіційними оголошеннями.</p>
+
+<h2>Коротко</h2>
+<p>Wattlo <b>не збирає, не зберігає на серверах і не передає розробнику жодних персональних даних</b>. У застосунку немає облікових записів, реклами, аналітики й звітів про збої. Усі налаштування й кеш графіка лежать лише на вашому телефоні та годиннику.</p>
+
+<h2>Що застосунок робить із мережею</h2>
+<p>Щоб показати графік, застосунок сам завантажує публічні сторінки:</p>
+<ul>
+  <li><a href="https://www.poe.pl.ua/disconnection/power-outages/">poe.pl.ua</a> — офіційний графік Полтаваобленерго (лише для Полтавської області);</li>
+  <li><a href="https://bezsvitla.com.ua/">bezsvitla.com.ua</a> — графіки інших регіонів.</li>
+</ul>
+<p>Як і будь-який запит до сайту, він містить вашу IP-адресу та рядок <code>User-Agent</code> «Wattlo/1.0». У запиті є лише сторінка регіону (для poe.pl.ua — дата); ваша черга, імена черг і налаштування на ці сайти <b>не передаються</b>: чергу застосунок вибирає з отриманої таблиці на вашому пристрої. Ці сайти — окремі сервіси зі своїми політиками конфіденційності, розробник Wattlo ними не керує.</p>
+
+<h2>Що зберігається на пристрої</h2>
+<ul>
+  <li>регіон, джерело, черга, додаткові черги та їхні назви, вигляд кілець, налаштування нагадувань і тихих годин;</li>
+  <li>останній отриманий графік (кеш) та час його оновлення.</li>
+</ul>
+<p>Ці дані залишаються на пристрої й видаляються разом із застосунком (або через «Налаштування → Програми → Wattlo → Пам'ять → Очистити дані»).</p>
+
+<h2>Синхронізація телефона й годинника</h2>
+<p>Спільні налаштування (регіон, черга, нагадування, вигляд на годиннику) передаються між вашим телефоном і вашим годинником Wear OS сервісом Google Play Services (Wear OS Data Layer), безпосередньо між вашими пристроями. Розробник цих даних не отримує. Графік кожен пристрій завантажує сам.</p>
+
+<h2>Дозволи</h2>
+<table>
+<tr><th>Дозвіл</th><th>Навіщо</th></tr>
+<tr><td>Інтернет, стан мережі</td><td>завантажити графік із сайтів вище</td></tr>
+<tr><td>Сповіщення</td><td>нагадування перед відключенням і включенням, сповіщення про зміну графіка (лише якщо ви їх увімкнули)</td></tr>
+<tr><td>Точні будильники</td><td>нагадування в задану хвилину, оновлення відліку у віджетах</td></tr>
+<tr><td>Запуск після перезавантаження</td><td>поновити заплановані нагадування й оновлення</td></tr>
+<tr><td>Вібрація, запобігання засинанню</td><td>вібрація нагадування, коротке фонове оновлення</td></tr>
+</table>
+
+<h2>Діти</h2>
+<p>Застосунок не призначений для дітей і не збирає даних про них — як і про будь-кого іншого.</p>
+
+<h2>Зміни політики</h2>
+<p>Якщо політика зміниться, нова версія з'явиться на цій сторінці з новою датою.</p>
+
+<h2>Зв'язок</h2>
+<p>Питання й повідомлення про помилки: <a href="https://github.com/termit-uanic/wattlo/issues">github.com/termit-uanic/wattlo/issues</a>. Вихідний код відкритий: <a href="https://github.com/termit-uanic/wattlo">github.com/termit-uanic/wattlo</a>.</p>
+</section>
+
+<!-- ===================================================================== РУССКИЙ -->
+<section id="ru" lang="ru">
+<h2 style="font-size:1.35rem;margin-top:.6em">Политика конфиденциальности</h2>
+<p class="muted">Последнее изменение: 20 ноября 2026 года</p>
+
+<p class="note"><b>Wattlo — неофициальное приложение.</b> Оно не связано с НЭК «Укрэнерго», Министерством энергетики, облэнерго, ДТЭК, YASNO или любым другим оператором сетей и не представляет их. Графики берутся из публичных источников и могут отличаться от фактических отключений: следите также за официальными объявлениями.</p>
+
+<h2>Коротко</h2>
+<p>Wattlo <b>не собирает, не хранит на серверах и не передаёт разработчику никаких персональных данных</b>. В приложении нет учётных записей, рекламы, аналитики и отчётов о сбоях. Все настройки и кеш графика лежат только на вашем телефоне и часах.</p>
+
+<h2>Что приложение делает с сетью</h2>
+<p>Чтобы показать график, приложение само загружает публичные страницы:</p>
+<ul>
+  <li><a href="https://www.poe.pl.ua/disconnection/power-outages/">poe.pl.ua</a> — официальный график Полтаваоблэнерго (только для Полтавской области);</li>
+  <li><a href="https://bezsvitla.com.ua/">bezsvitla.com.ua</a> — графики остальных регионов.</li>
+</ul>
+<p>Как и любой запрос к сайту, он содержит ваш IP-адрес и строку <code>User-Agent</code> «Wattlo/1.0». В запросе только страница региона (для poe.pl.ua — дата); ваша очередь, названия очередей и настройки на эти сайты <b>не передаются</b>: очередь приложение выбирает из полученной таблицы на вашем устройстве. Эти сайты — отдельные сервисы со своими политиками конфиденциальности, разработчик Wattlo ими не управляет.</p>
+
+<h2>Что хранится на устройстве</h2>
+<ul>
+  <li>регион, источник, очередь, дополнительные очереди и их названия, вид колец, настройки напоминаний и тихих часов;</li>
+  <li>последний полученный график (кеш) и время его обновления.</li>
+</ul>
+<p>Эти данные остаются на устройстве и удаляются вместе с приложением (или через «Настройки → Приложения → Wattlo → Память → Очистить данные»).</p>
+
+<h2>Синхронизация телефона и часов</h2>
+<p>Общие настройки (регион, очередь, напоминания, вид на часах) передаются между вашим телефоном и вашими часами Wear OS сервисом Google Play Services (Wear OS Data Layer), напрямую между вашими устройствами. Разработчик этих данных не получает. График каждое устройство загружает само.</p>
+
+<h2>Разрешения</h2>
+<table>
+<tr><th>Разрешение</th><th>Зачем</th></tr>
+<tr><td>Интернет, состояние сети</td><td>загрузить график с сайтов выше</td></tr>
+<tr><td>Уведомления</td><td>напоминания перед отключением и включением, уведомления об изменении графика (только если вы их включили)</td></tr>
+<tr><td>Точные будильники</td><td>напоминание в заданную минуту, обновление отсчёта в виджетах</td></tr>
+<tr><td>Запуск после перезагрузки</td><td>восстановить запланированные напоминания и обновления</td></tr>
+<tr><td>Вибрация, предотвращение засыпания</td><td>вибрация напоминания, короткое фоновое обновление</td></tr>
+</table>
+
+<h2>Дети</h2>
+<p>Приложение не предназначено для детей и не собирает данных о них — как и о ком-либо другом.</p>
+
+<h2>Изменения политики</h2>
+<p>Если политика изменится, новая версия появится на этой странице с новой датой.</p>
+
+<h2>Связь</h2>
+<p>Вопросы и сообщения об ошибках: <a href="https://github.com/termit-uanic/wattlo/issues">github.com/termit-uanic/wattlo/issues</a>. Исходный код открыт: <a href="https://github.com/termit-uanic/wattlo">github.com/termit-uanic/wattlo</a>.</p>
+</section>
+
+<!-- ===================================================================== ENGLISH -->
+<section id="en" lang="en">
+<h2 style="font-size:1.35rem;margin-top:.6em">Privacy policy</h2>
+<p class="muted">Last changed: 20 November 2026</p>
+
+<p class="note"><b>Wattlo is an unofficial app.</b> It is not affiliated with, endorsed by or representing Ukrenergo, the Ministry of Energy, any regional power company, DTEK, YASNO or any other grid operator. The schedules come from public sources and may differ from the actual outages: please follow the official announcements as well.</p>
+
+<h2>In short</h2>
+<p>Wattlo <b>does not collect, store on servers or send to the developer any personal data</b>. The app has no accounts, no ads, no analytics and no crash reporting. All settings and the cached schedule stay on your phone and your watch.</p>
+
+<h2>What the app does with the network</h2>
+<p>To show a schedule, the app itself downloads public pages:</p>
+<ul>
+  <li><a href="https://www.poe.pl.ua/disconnection/power-outages/">poe.pl.ua</a>: the official schedule of the Poltava power company (the Poltava region only);</li>
+  <li><a href="https://bezsvitla.com.ua/">bezsvitla.com.ua</a>: the schedules of the other regions.</li>
+</ul>
+<p>Like any request to a website, it carries your IP address and a <code>User-Agent</code> of "Wattlo/1.0". The request names only the page of the region (for poe.pl.ua, a date); your queue, the names of your queues and your settings are <b>not sent</b> to these sites: the app picks the queue out of the downloaded table on your device. These sites are separate services with their own privacy policies; the developer of Wattlo does not run them.</p>
+
+<h2>What is stored on the device</h2>
+<ul>
+  <li>the region, the source, the queue, the extra queues and their names, the look of the rings, the reminder and quiet-hours settings;</li>
+  <li>the last schedule received (a cache) and when it was updated.</li>
+</ul>
+<p>This data stays on the device and is removed with the app (or with Settings → Apps → Wattlo → Storage → Clear data).</p>
+
+<h2>Syncing the phone and the watch</h2>
+<p>The shared settings (region, queue, reminders, how the watch looks) travel between your phone and your Wear OS watch through Google Play Services (the Wear OS Data Layer), directly between your own devices. The developer does not receive them. Each device downloads the schedule itself.</p>
+
+<h2>Permissions</h2>
+<table>
+<tr><th>Permission</th><th>Why</th></tr>
+<tr><td>Internet, network state</td><td>to download the schedule from the sites above</td></tr>
+<tr><td>Notifications</td><td>reminders before the power goes off and comes back, notifications about schedule changes (only if you turn them on)</td></tr>
+<tr><td>Exact alarms</td><td>a reminder at the minute you set, the countdown in the widgets</td></tr>
+<tr><td>Start after reboot</td><td>to restore the planned reminders and updates</td></tr>
+<tr><td>Vibration, keep awake</td><td>the vibration of a reminder, a short background update</td></tr>
+</table>
+
+<h2>Children</h2>
+<p>The app is not directed at children and collects no data about them, or about anybody else.</p>
+
+<h2>Changes to this policy</h2>
+<p>If the policy changes, the new version will appear on this page with a new date.</p>
+
+<h2>Contact</h2>
+<p>Questions and bug reports: <a href="https://github.com/termit-uanic/wattlo/issues">github.com/termit-uanic/wattlo/issues</a>. The source code is open: <a href="https://github.com/termit-uanic/wattlo">github.com/termit-uanic/wattlo</a>.</p>
+</section>
+</main>
+<script>
+  // Shows one language: the one in the address (#uk, #ru, #en), else the browser's, else Ukrainian.
+  // Without scripts all three are shown one after another.
+  (function () {
+    var sections = document.querySelectorAll("main > section");
+    var links = document.querySelectorAll("#langs a");
+    function pick() {
+      var want = (location.hash || "").slice(1);
+      if (!document.getElementById(want)) {
+        var l = (navigator.language || "uk").slice(0, 2);
+        want = document.getElementById(l) ? l : "uk";
+      }
+      sections.forEach(function (s) { s.hidden = s.id !== want; });
+      links.forEach(function (a) { a.setAttribute("aria-current", a.dataset.lang === want ? "true" : "false"); });
+      document.documentElement.lang = want;
+    }
+    window.addEventListener("hashchange", pick);
+    pick();
+  })();
+</script>
+</body>
+</html>
