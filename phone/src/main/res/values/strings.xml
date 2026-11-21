@@ -90,4 +90,5 @@
     <string name="setup_allow_notifications">Allow notifications</string>
     <string name="setup_rerun_title">Setup wizard</string>
     <string name="setup_rerun_hint">Choose the queue and the look again</string>
+    <string name="search_hint">Search</string>
 </resources>

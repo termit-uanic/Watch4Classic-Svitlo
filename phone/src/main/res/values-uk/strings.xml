@@ -90,4 +90,5 @@
     <string name="setup_allow_notifications">Дозволити сповіщення</string>
     <string name="setup_rerun_title">Майстер налаштування</string>
     <string name="setup_rerun_hint">Заново обрати чергу та вигляд</string>
+    <string name="search_hint">Пошук</string>
 </resources>

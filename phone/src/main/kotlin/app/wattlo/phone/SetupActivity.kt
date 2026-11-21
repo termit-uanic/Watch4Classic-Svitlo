@@ -52,6 +52,8 @@ class SetupActivity : Activity() {
     private lateinit var region: Region
     private lateinit var main: String
     private val extras = linkedSetOf<String>()
+    /** What the user typed to find a region or a queue; each step starts with an empty field. */
+    private var filter = ""
     /** 0 = one ring of 24 hours, 1 = two rings with the numbers outside, 2 = two rings with all the hours. */
     private var look = 2
     private var sameOnWatch = true
@@ -87,7 +89,7 @@ class SetupActivity : Activity() {
         show()
     }
 
-    private fun back() { if (step > 0) { step--; show() } else finish() }
+    private fun back() { filter = ""; if (step > 0) { step--; show() } else finish() }
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() = back()
@@ -128,6 +130,7 @@ class SetupActivity : Activity() {
             2 -> applyQueues() // from now on the schedule of the chosen queue is being fetched: the next steps can show it
             LAST -> return finishSetup()
         }
+        filter = ""
         step++
         show()
     }
@@ -136,7 +139,7 @@ class SetupActivity : Activity() {
         when (step) {
             0 -> { markDone(this); finish() }
             LAST -> { leadOff = Settings.notifyOff(this); leadOn = Settings.notifyOn(this); finishSetup() }
-            else -> { step++; show() }
+            else -> { filter = ""; step++; show() }
         }
     }
 
@@ -166,12 +169,32 @@ class SetupActivity : Activity() {
     private fun regionStep(): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         addView(title(R.string.setup_region_title, R.string.setup_region_body))
-        addView(grid(1, Region.sorted(this@SetupActivity).map { r ->
-            chip(getString(r.nameRes), r == region, multi = false) {
-                if (r != region) { region = r; main = Settings.DEFAULT_QUEUE; extras.clear() }
-                show()
+        addView(filtered(1, Region.sorted(this@SetupActivity).map { r ->
+            getString(r.nameRes) to {
+                chip(getString(r.nameRes), r == region, multi = false) {
+                    if (r != region) { region = r; main = Settings.DEFAULT_QUEUE; extras.clear() }
+                    show()
+                }
             }
         }))
+    }
+
+    /**
+     * A grid of chips with a filter field above it when there are many (the regions, the 60 queues of Kyiv): typing
+     * rebuilds only the grid, not the step. [entries] are the text to look in and a factory of the chip.
+     */
+    private fun filtered(columns: Int, entries: List<Pair<String, () -> View>>): View = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        val holder = FrameLayout(context)
+        fun fill() {
+            holder.removeAllViews()
+            holder.addView(grid(columns, entries.filter { SearchDialog.matches(it.first, filter) }.map { it.second() }))
+        }
+        if (entries.size >= SearchDialog.MIN_FOR_FILTER) {
+            addView(ui.searchField(getString(R.string.search_hint), filter) { filter = it; fill() }, ui.lp().apply { bottomMargin = ui.dp(12f).toInt() })
+        }
+        fill()
+        addView(holder)
     }
 
     /** Most regions have 12 queues (Ternopil 14), Kyiv has 60: then the chips are smaller. */
@@ -180,7 +203,7 @@ class SetupActivity : Activity() {
     private fun queueStep(): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         addView(title(R.string.setup_queue_title, R.string.setup_queue_body))
-        addView(grid(columns(), region.queues.map { q -> chip(q, q == main, multi = false) { main = q; extras.remove(q); show() } }))
+        addView(filtered(columns(), region.queues.map { q -> q to { chip(q, q == main, multi = false) { main = q; extras.remove(q); show() } } }))
         // where to find out the queue: the power company's own table for Poltava, the page of the region otherwise
         val poltava = region == Region.POLTAVA
         addView(ui.label(13.5f, Palette.GREEN).apply {
@@ -194,8 +217,8 @@ class SetupActivity : Activity() {
     private fun extrasStep(): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         addView(title(R.string.setup_extras_title, R.string.setup_extras_body))
-        addView(grid(columns(), region.queues.filter { it != main }.map { q ->
-            chip(q, q in extras, multi = true) { if (q in extras) extras.remove(q) else extras.add(q); show() }
+        addView(filtered(columns(), region.queues.filter { it != main }.map { q ->
+            q to { chip(q, q in extras, multi = true) { if (q in extras) extras.remove(q) else extras.add(q); show() } }
         }))
     }
 

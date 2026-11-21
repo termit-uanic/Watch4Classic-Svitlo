@@ -90,4 +90,5 @@
     <string name="setup_allow_notifications">Разрешить уведомления</string>
     <string name="setup_rerun_title">Мастер настройки</string>
     <string name="setup_rerun_hint">Заново выбрать очередь и вид</string>
+    <string name="search_hint">Поиск</string>
 </resources>

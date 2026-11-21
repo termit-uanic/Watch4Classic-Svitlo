@@ -195,13 +195,9 @@ class SettingsActivity : Activity() {
     /** Another region has its own queues and sites: the source and the main queue start again from the defaults. */
     private fun pickRegion() {
         val all = Region.sorted(this)
-        AlertDialog.Builder(this)
-            .setTitle(getString(CoreR.string.region))
-            .setSingleChoiceItems(all.map { getString(it.nameRes) }.toTypedArray(), all.indexOf(Settings.region(this))) { d, i ->
-                d.dismiss()
-                applyDataSetting { Settings.setRegion(this, all[i]) }
-            }
-            .show()
+        SearchDialog.single(this, getString(CoreR.string.region), all.map { getString(it.nameRes) }, all.indexOf(Settings.region(this))) { i ->
+            applyDataSetting { Settings.setRegion(this, all[i]) }
+        }
     }
 
     private fun pickSource() {
@@ -217,35 +213,24 @@ class SettingsActivity : Activity() {
 
     private fun pickQueue() {
         val all = Settings.queues(this)
-        AlertDialog.Builder(this)
-            .setTitle(getString(R.string.queue_main_title))
-            .setSingleChoiceItems(
-                all.map { getString(CoreR.string.queue_name, it) }.toTypedArray(), all.indexOf(Settings.queue(this))
-            ) { d, i ->
-                d.dismiss()
-                applyDataSetting { Settings.set(this, queue = all[i]) }
-            }
-            .show()
+        SearchDialog.single(
+            this, getString(R.string.queue_main_title), all.map { getString(CoreR.string.queue_name, it) }, all.indexOf(Settings.queue(this))
+        ) { i -> applyDataSetting { Settings.set(this, queue = all[i]) } }
     }
 
     /** The extra queues the main screen can switch to; only the main one goes to the watch. */
     private fun pickExtraQueues() {
         val main = Settings.queue(this)
         val all = Settings.queues(this).filter { it != main }
-        val chosen = Settings.extraQueues(this).toMutableSet()
-        AlertDialog.Builder(this)
-            .setTitle(getString(R.string.queues_extra_title))
-            .setMultiChoiceItems(
-                all.map { getString(CoreR.string.queue_name, it) }.toTypedArray(),
-                BooleanArray(all.size) { all[it] in chosen }
-            ) { _, i, on -> if (on) chosen += all[i] else chosen -= all[i] }
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                Settings.setExtraQueues(this, chosen)
-                render()
-                Refresh.now(this) // fetch the schedules of the new queues
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        val chosen = Settings.extraQueues(this)
+        SearchDialog.multi(
+            this, getString(R.string.queues_extra_title), all.map { getString(CoreR.string.queue_name, it) },
+            all.indices.filter { all[it] in chosen }.toSet()
+        ) { picked ->
+            Settings.setExtraQueues(this, picked.map { all[it] }.toSet())
+            render()
+            Refresh.now(this) // fetch the schedules of the new queues
+        }
     }
 
     /** Short names of the extra queues ("parents", "sister"): shown where the main queue says "main". */

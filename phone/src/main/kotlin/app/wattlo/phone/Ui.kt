@@ -150,6 +150,24 @@ class Ui(private val ctx: Context) {
         setPadding(dp(6f).toInt(), dp(22f).toInt(), 0, dp(8f).toInt())
     }
 
+    /** A one-line filter field in the style of the cards; [onChange] gets the text each time it changes. */
+    fun searchField(hint: String, initial: String = "", onChange: (String) -> Unit) = android.widget.EditText(ctx).apply {
+        setText(initial)
+        this.hint = hint
+        setHintTextColor(Palette.LABEL)
+        setTextColor(Palette.WHITE)
+        setSingleLine()
+        imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
+        inputType = android.text.InputType.TYPE_CLASS_TEXT
+        setPadding(dp(14f).toInt(), dp(10f).toInt(), dp(14f).toInt(), dp(10f).toInt())
+        background = GradientDrawable().apply { cornerRadius = dp(14f); setColor(Palette.CARD) }
+        addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(e: android.text.Editable?) = onChange(e?.toString().orEmpty())
+            override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
+            override fun onTextChanged(s: CharSequence?, st: Int, b: Int, c: Int) {}
+        })
+    }
+
     fun lp(top: Float = 0f) = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = dp(top).toInt() }
 }
 
