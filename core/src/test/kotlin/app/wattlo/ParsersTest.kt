@@ -83,6 +83,22 @@ class ParsersTest {
         }
     }
 
+    // ---------------------------------------------------------------- bezsvitla: Chernivtsi ("Група 1" .. "Група 12")
+
+    /** Real cards of the Chernivtsi page (groups 1, 5, 9, 12), saved on 2026-11-21. */
+    @Test fun bezsvitla_chernivtsiGroups() {
+        val d = LocalDate.of(2026, 11, 21)
+        fun day(g: String) = Schedule.parseBezsvitla(res("bezsvitla_chernivtsi.html"), d, g).getValue(d).str()
+        assertEquals("0".repeat(48), day("1"))
+        assertEquals("1" + "0".repeat(47), day("5"))
+        assertEquals("0" + "1".repeat(4) + "0".repeat(43), day("9"))
+        // "Група 12" is not "Група 1" and the other way round
+        assertEquals("1".repeat(2) + "0".repeat(46), day("12"))
+    }
+
+    @Test fun bezsvitla_chernivtsiGroupNotInFixture() =
+        assertTrue(Schedule.parseBezsvitla(res("bezsvitla_chernivtsi.html"), LocalDate.of(2026, 11, 21), "2").isEmpty())
+
     // ---------------------------------------------------------------- notifications
 
     @Test fun notify_next() {

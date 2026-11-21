@@ -172,7 +172,7 @@ class SetupActivity : Activity() {
         addView(filtered(1, Region.sorted(this@SetupActivity).map { r ->
             getString(r.nameRes) to {
                 chip(getString(r.nameRes), r == region, multi = false) {
-                    if (r != region) { region = r; main = Settings.DEFAULT_QUEUE; extras.clear() }
+                    if (r != region) { region = r; main = r.defaultQueue; extras.clear() }
                     show()
                 }
             }

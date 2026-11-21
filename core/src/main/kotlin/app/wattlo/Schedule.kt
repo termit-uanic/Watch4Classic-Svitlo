@@ -42,15 +42,25 @@ object Schedule {
 
     /** The part of the page with the queue's card that holds the schedule. */
     private fun bezsvitlaCard(page: String, queue: String): String? {
-        val marker = "<strong>Черга $queue</strong>"
-        var i = page.indexOf(marker)
-        while (i >= 0) {
-            val end = page.indexOf("<strong>Черга ", i + marker.length).let { if (it < 0) page.length else it }
-            val seg = page.substring(i, end)
-            if ("data-schedule-intervals" in seg) return seg
-            i = page.indexOf(marker, i + marker.length)
+        // most regions say "Черга 1.1", Chernivtsi region "Група 1"
+        for (word in listOf("Черга", "Група")) {
+            val marker = "<strong>$word $queue</strong>"
+            var i = page.indexOf(marker)
+            while (i >= 0) {
+                val end = nextCard(page, i + marker.length)
+                val seg = page.substring(i, end)
+                if ("data-schedule-intervals" in seg) return seg
+                i = page.indexOf(marker, i + marker.length)
+            }
         }
         return null
+    }
+
+    /** Where the next card starts (the next "Черга"/"Група" heading), or the end of the page. */
+    private fun nextCard(page: String, from: Int): Int {
+        val a = page.indexOf("<strong>Черга ", from)
+        val b = page.indexOf("<strong>Група ", from)
+        return listOfNotNull(a.takeIf { it >= 0 }, b.takeIf { it >= 0 }).minOrNull() ?: page.length
     }
 
     /** Interval list to 48 flags; null if the day is not fully covered. */

@@ -88,7 +88,12 @@ enum class Region(
     ZAKARPATTIA("zakarpatska-oblast", R.string.region_zakarpattia, TWELVE, listOf(Source.BEZSVITLA)),
     ZAPORIZHZHIA("zaporizka-oblast", R.string.region_zaporizhzhia, TWELVE, listOf(Source.BEZSVITLA)),
     ZHYTOMYR("zhytomyrska-oblast", R.string.region_zhytomyr, TWELVE, listOf(Source.BEZSVITLA)),
+    // Chernivtsi: the site calls them groups ("Група 1" .. "Група 12"), here they are queues "1" .. "12"
+    CHERNIVTSI("chernivetska-oblast", R.string.region_chernivtsi, (1..12).map { "$it" }, listOf(Source.BEZSVITLA)),
     KYIV("kyiv", R.string.region_kyiv, (1..60).map { "$it.1" }, listOf(Source.BEZSVITLA));
+
+    /** The queue chosen when the region is picked: the first one of the region. */
+    val defaultQueue: String get() = queues.first()
 
     companion object {
         /** Every queue name of every region: their caches share a naming scheme. */
@@ -166,7 +171,7 @@ object Settings {
     /** The queue until the user picks one (the setup wizard asks first thing). */
     const val DEFAULT_QUEUE = "1.1"
 
-    fun queue(c: Context): String = p(c).getString("queue", null)?.takeIf { it in queues(c) } ?: DEFAULT_QUEUE
+    fun queue(c: Context): String = p(c).getString("queue", null)?.takeIf { it in queues(c) } ?: region(c).defaultQueue
 
     /**
      * The user picked this queue (the setup wizard): store it and share it with the other device even when it is
@@ -257,7 +262,7 @@ object Settings {
     fun set(c: Context, source: Source = source(c), queue: String = queue(c)) {
         val r = region(c)
         val src = source.takeIf { it in r.sources } ?: r.sources.first()
-        val q = queue.takeIf { it in r.queues } ?: DEFAULT_QUEUE
+        val q = queue.takeIf { it in r.queues } ?: r.defaultQueue
         if (src == source(c) && q == queue(c)) return
         val sourceChanged = src != source(c)
         p(c).edit().putString("source", src.name).putString("queue", q).apply()
@@ -269,12 +274,12 @@ object Settings {
 
     /**
      * Another region: its operator has its own queues and its own sites, so the source goes to the region's
-     * default, the queue to [DEFAULT_QUEUE], the extra queues and their names go away, and no cache applies.
+     * default, the queue to the first of the region, the extra queues and their names go away, and no cache applies.
      */
     fun setRegion(c: Context, region: Region) {
         if (region == region(c)) return
         val e = p(c).edit().putString("region", region.name).putString("source", region.sources.first().name)
-            .putString("queue", DEFAULT_QUEUE).putString("extraQueues", "")
+            .putString("queue", region.defaultQueue).putString("extraQueues", "")
         Region.ALL_QUEUES.forEach { e.remove("label_$it") }
         e.apply()
         Store.clearAll(c)
@@ -331,7 +336,7 @@ object Settings {
             return copy(
                 region = r.name,
                 source = if (r.sources.any { it.name == source }) source else r.sources.first().name,
-                queue = queue.takeIf { it in r.queues } ?: DEFAULT_QUEUE,
+                queue = queue.takeIf { it in r.queues } ?: r.defaultQueue,
             ).clamped()
         }
 

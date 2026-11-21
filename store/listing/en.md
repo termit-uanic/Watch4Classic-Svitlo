@@ -23,7 +23,7 @@ PHONE (Android)
 • How the tile and the watch app look can be set on the phone; the shared settings are synchronised between the phone and the watch
 
 REGIONS
-21 regions: 20 oblasts (Poltava, Kharkiv, Dnipropetrovsk, Odesa, Kyiv, Lviv and more; not yet Donetsk, Luhansk, Kherson or Chernivtsi) and the city of Kyiv. Pick your region and queue in a short setup wizard.
+22 regions: 21 oblasts (Poltava, Kharkiv, Dnipropetrovsk, Odesa, Kyiv, Lviv and more; not yet Donetsk, Luhansk or Kherson) and the city of Kyiv. Pick your region and queue in a short setup wizard.
 
 SIMPLE AND PRIVATE
 No accounts, no ads, no analytics. The app downloads public schedules by itself and keeps everything on your devices. Languages: Ukrainian, Russian, English. Open source (MIT).
