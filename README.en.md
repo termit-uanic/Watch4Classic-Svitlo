@@ -73,7 +73,7 @@ Regions: 21 regions: 20 oblasts (Poltava, Kharkiv, Dnipropetrovsk, Odesa, Kyiv, 
 
 Other sites with schedules (energy-ua.info, for example) are not used: their `robots.txt` forbids automated reading.
 
-The schedule can change at any time, so also follow the official announcements of the regional power company. The app is unofficial and is not affiliated with Ukrenergo or any regional power company.
+The schedule can change at any time, so also follow the official announcements of the regional power company. Emergency outages are usually not part of the published schedules, so the app does not know about them. The app is unofficial and is not affiliated with Ukrenergo or any regional power company.
 
 ## Installation
 
