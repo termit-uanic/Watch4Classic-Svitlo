@@ -69,7 +69,12 @@ The screenshots were taken on emulators (a Pixel 8 with Android 14 and a Wear OS
 
 Regions: 21 oblasts (Poltava, Kharkiv, Dnipropetrovsk, Odesa, Kyiv, Lviv and more; not yet Donetsk, Luhansk or Kherson) and the city of Kyiv (Kyiv has 60 sub-queues, 1.1–60.1; Ternopil region has 14 queues; Chernivtsi region has 12 groups ("Група 1…12" on the site, queues 1…12 in the app); the others 12 queues, 1.1–6.2). The region is chosen in the setup wizard and in the settings.
 - [poe.pl.ua](https://www.poe.pl.ua/disconnection/power-outages/): the official schedule of Poltavaoblenergo, 30-minute step, yellow for the switching time; the Poltava region only, where it is *the default*;
+- [yasno.ua](https://yasno.ua): Kyiv and Dnipro, the public data of the YASNO service (the schedules of the operators themselves), *the default* for these cities;
+- [outage-data-ua](https://github.com/Baskerville42/outage-data-ua): JSON files with the DTEK schedules (Kyiv region, Dnipropetrovsk, Odesa and the city of Kyiv) collected by Baskerville42, *the default* for these regions;
+- [OE_OUTAGE_DATA](https://github.com/yaroslav2901/OE_OUTAGE_DATA) and [gpv-voe-vinnytsia](https://github.com/vn-progr/gpv-voe-vinnytsia): JSON files with the schedules of the regional power companies that volunteers collect (Kharkiv, Cherkasy, Chernihiv, Ivano-Frankivsk, Khmelnytskyi, Lviv, Rivne, Zakarpattia, Zaporizhzhia, Zhytomyr and Vinnytsia regions): a spare source that can be chosen in the settings. The volunteers' files sometimes lag behind, so bezsvitla stays the first one for these regions;
 - [bezsvitla.com.ua](https://bezsvitla.com.ua): the schedules of all the regions, 30-minute step. The site allows using its materials with an active link to it: the app has one in "Settings → Sources of the schedules".
+
+If the chosen source does not answer or its file is out of date (no day of today), the app takes the next source of the region. All the links are in "Settings → Sources of the schedules".
 
 Other sites with schedules (energy-ua.info, for example) are not used: their `robots.txt` forbids automated reading.
 

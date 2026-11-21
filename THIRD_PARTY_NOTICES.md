@@ -8,7 +8,7 @@ Wattlo grew out of the app "Svitlo" by Yehor Shamanskyi, [sudoRM-rSLASH/Watch4Cl
 
 ## Schedules
 
-The schedules come from the website of the Poltava power company, [poe.pl.ua](https://www.poe.pl.ua), and from [bezsvitla.com.ua](https://bezsvitla.com.ua) (all the other regions); the app links to both. Wattlo is not an official source.
+The schedules come from the website of the Poltava power company, [poe.pl.ua](https://www.poe.pl.ua); from the public data of [yasno.ua](https://yasno.ua) (Kyiv, Dnipro); from open JSON files on GitHub that volunteers collect from the sites of the power companies: [outage-data-ua](https://github.com/Baskerville42/outage-data-ua), [OE_OUTAGE_DATA](https://github.com/yaroslav2901/OE_OUTAGE_DATA) and [gpv-voe-vinnytsia](https://github.com/vn-progr/gpv-voe-vinnytsia); and from [bezsvitla.com.ua](https://bezsvitla.com.ua) (all the regions); the app links to all of them. Wattlo is not an official source.
 
 ## Libraries
 

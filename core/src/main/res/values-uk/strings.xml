@@ -98,6 +98,7 @@
     <string name="err_blocked">Сайт заблокував запит (HTTP %1$d)</string>
     <string name="err_browser_check">Сайт вимагає перевірку браузера</string>
     <string name="err_schedule_not_found">Графік черги %1$s не знайдено</string>
+    <string name="err_source_stale">%1$s давно не оновлювався</string>
 
     <string name="notify_setting_today">Графік на сьогодні змінився</string>
     <string name="notify_setting_tomorrow">З\'явився графік на завтра</string>

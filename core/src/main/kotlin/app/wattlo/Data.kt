@@ -18,10 +18,20 @@ import java.net.HttpURLConnection
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 
-/** Where the schedule comes from. Slot states: 0 = power on, 1 = off, 2 = switching (may be off). */
-enum class Source(val host: String) {
-    POE("poe.pl.ua"),
-    BEZSVITLA("bezsvitla.com.ua");
+/**
+ * Where the schedule comes from. Slot states: 0 = power on, 1 = off, 2 = switching (may be off).
+ * [host] is what the lists show, [url] is the site or repository the user can open (the sources are credited
+ * in the app, and bezsvitla.com.ua asks for an active link).
+ */
+enum class Source(val host: String, val url: String) {
+    POE("poe.pl.ua", "https://www.poe.pl.ua/disconnection/power-outages/"),
+    BEZSVITLA("bezsvitla.com.ua", "https://bezsvitla.com.ua/"),
+    /** The JSON of the YASNO web app (Kyiv, Dnipro): the schedules of the operators themselves. */
+    YASNO("yasno.ua", "https://yasno.ua/"),
+    /** JSON files collected by volunteers from the sites of the operators and kept on GitHub (see [RAW_BASE]). */
+    DTEK_DATA("outage-data-ua (GitHub)", "https://github.com/Baskerville42/outage-data-ua"),
+    OE_DATA("OE_OUTAGE_DATA (GitHub)", "https://github.com/yaroslav2901/OE_OUTAGE_DATA"),
+    VOE_DATA("gpv-voe-vinnytsia (GitHub)", "https://github.com/vn-progr/gpv-voe-vinnytsia");
 
     /**
      * Dates a [load] call asks the source about. A date that is requested but missing from the result
@@ -51,9 +61,23 @@ enum class Source(val host: String) {
         }
         BEZSVITLA -> Schedule.parseBezsvitla(Http.request("https://bezsvitla.com.ua/${region.slug}"), today, queue)
             .mapValues { bits(it.value) }
+        YASNO -> {
+            val (regionId, dsoId) = region.yasno ?: throw FetchError(R.string.err_schedule_not_found, queue)
+            JsonSources.yasno(Http.request("https://app.yasno.ua/api/blackout-service/public/shutdowns/regions/$regionId/dsos/$dsoId/planned-outages"), queue)
+        }
+        DTEK_DATA, OE_DATA, VOE_DATA -> {
+            val file = region.dataFile ?: throw FetchError(R.string.err_schedule_not_found, queue)
+            JsonSources.mirror(Http.request(RAW_BASE.getValue(this) + file), queue, host)
+        }
     }
 
     private companion object {
+        /** Where the JSON files of each repository are (raw files of the main branch). */
+        val RAW_BASE = mapOf(
+            DTEK_DATA to "https://raw.githubusercontent.com/Baskerville42/outage-data-ua/main/data/",
+            OE_DATA to "https://raw.githubusercontent.com/yaroslav2901/OE_OUTAGE_DATA/main/data/",
+            VOE_DATA to "https://raw.githubusercontent.com/vn-progr/gpv-voe-vinnytsia/main/data/",
+        )
         val POE_DATE: java.time.format.DateTimeFormatter = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
         fun bits(f: BooleanArray) = IntArray(f.size) { if (f[it]) 1 else 0 }
     }
@@ -62,35 +86,41 @@ enum class Source(val host: String) {
 /**
  * The regions with a published schedule: the page of the region on bezsvitla.com.ua is [slug]; [queues] are the
  * groups the region's operator uses (Kyiv has 60 sub-queues, everywhere else 12); [sources] are the sites that
- * have its schedule, the first one is the default. Poltava also has the official schedule of its own power
- * company (poe.pl.ua).
+ * have its schedule, the first one is the default (and the order in which they are tried when one fails).
+ * Poltava also has the official schedule of its own power company (poe.pl.ua). The JSON sources come first only
+ * where they matched bezsvitla.com.ua when they were compared (YASNO, the DTEK files); the files that volunteers
+ * keep for the other power companies sometimes lag behind the sites by hours, so there bezsvitla.com.ua is first.
  */
 enum class Region(
     val slug: String, @androidx.annotation.StringRes val nameRes: Int, val queues: List<String>, val sources: List<Source>,
+    /** The YASNO region and operator numbers (see [Source.YASNO]). */
+    val yasno: Pair<Int, Int>? = null,
+    /** The name of the region's file in the repositories of the JSON sources. */
+    val dataFile: String? = null,
 ) {
     POLTAVA("poltavska-oblast", R.string.region_poltava, TWELVE, listOf(Source.POE, Source.BEZSVITLA)),
-    KHARKIV("kharkivska-oblast", R.string.region_kharkiv, TWELVE, listOf(Source.BEZSVITLA)),
-    DNIPRO("dnipropetrovska-oblast", R.string.region_dnipro, TWELVE, listOf(Source.BEZSVITLA)),
-    ODESA("odeska-oblast", R.string.region_odesa, TWELVE, listOf(Source.BEZSVITLA)),
-    KYIV_OBLAST("kyivska-oblast", R.string.region_kyiv_oblast, TWELVE, listOf(Source.BEZSVITLA)),
-    CHERKASY("cherkaska-oblast", R.string.region_cherkasy, TWELVE, listOf(Source.BEZSVITLA)),
-    CHERNIHIV("chernihivska-oblast", R.string.region_chernihiv, TWELVE, listOf(Source.BEZSVITLA)),
-    IVANO_FRANKIVSK("ivano-frankivska-oblast", R.string.region_ivano_frankivsk, TWELVE, listOf(Source.BEZSVITLA)),
-    KHMELNYTSKYI("khmelnytska-oblast", R.string.region_khmelnytskyi, TWELVE, listOf(Source.BEZSVITLA)),
+    KHARKIV("kharkivska-oblast", R.string.region_kharkiv, TWELVE, listOf(Source.BEZSVITLA, Source.OE_DATA), dataFile = "Kharkivoblenerho.json"),
+    DNIPRO("dnipropetrovska-oblast", R.string.region_dnipro, TWELVE, listOf(Source.YASNO, Source.DTEK_DATA, Source.BEZSVITLA), yasno = 3 to 301, dataFile = "dnipro.json"),
+    ODESA("odeska-oblast", R.string.region_odesa, TWELVE, listOf(Source.DTEK_DATA, Source.BEZSVITLA), dataFile = "odesa.json"),
+    KYIV_OBLAST("kyivska-oblast", R.string.region_kyiv_oblast, TWELVE, listOf(Source.DTEK_DATA, Source.BEZSVITLA), dataFile = "kyiv-region.json"),
+    CHERKASY("cherkaska-oblast", R.string.region_cherkasy, TWELVE, listOf(Source.BEZSVITLA, Source.OE_DATA), dataFile = "Cherkasyoblenergo.json"),
+    CHERNIHIV("chernihivska-oblast", R.string.region_chernihiv, TWELVE, listOf(Source.BEZSVITLA, Source.OE_DATA), dataFile = "Chernihivoblenergo.json"),
+    IVANO_FRANKIVSK("ivano-frankivska-oblast", R.string.region_ivano_frankivsk, TWELVE, listOf(Source.BEZSVITLA, Source.OE_DATA), dataFile = "Prykarpattiaoblenerho.json"),
+    KHMELNYTSKYI("khmelnytska-oblast", R.string.region_khmelnytskyi, TWELVE, listOf(Source.BEZSVITLA, Source.OE_DATA), dataFile = "Khmelnytskoblenerho.json"),
     KIROVOHRAD("kirovohradska-oblast", R.string.region_kirovohrad, TWELVE, listOf(Source.BEZSVITLA)),
-    LVIV("lvivska-oblast", R.string.region_lviv, TWELVE, listOf(Source.BEZSVITLA)),
+    LVIV("lvivska-oblast", R.string.region_lviv, TWELVE, listOf(Source.BEZSVITLA, Source.OE_DATA), dataFile = "Lvivoblenerho.json"),
     MYKOLAIV("mykolaivska-oblast", R.string.region_mykolaiv, TWELVE, listOf(Source.BEZSVITLA)),
-    RIVNE("rivnenska-oblast", R.string.region_rivne, TWELVE, listOf(Source.BEZSVITLA)),
+    RIVNE("rivnenska-oblast", R.string.region_rivne, TWELVE, listOf(Source.BEZSVITLA, Source.OE_DATA), dataFile = "Rivneoblenergo.json"),
     SUMY("sumska-oblast", R.string.region_sumy, TWELVE, listOf(Source.BEZSVITLA)),
     TERNOPIL("ternopilska-oblast", R.string.region_ternopil, TERNOPIL_QUEUES, listOf(Source.BEZSVITLA)),
-    VINNYTSIA("vinnytska-oblast", R.string.region_vinnytsia, TWELVE, listOf(Source.BEZSVITLA)),
+    VINNYTSIA("vinnytska-oblast", R.string.region_vinnytsia, TWELVE, listOf(Source.BEZSVITLA, Source.VOE_DATA), dataFile = "Vinnytsiaoblenerho.json"),
     VOLYN("volynska-oblast", R.string.region_volyn, TWELVE, listOf(Source.BEZSVITLA)),
-    ZAKARPATTIA("zakarpatska-oblast", R.string.region_zakarpattia, TWELVE, listOf(Source.BEZSVITLA)),
-    ZAPORIZHZHIA("zaporizka-oblast", R.string.region_zaporizhzhia, TWELVE, listOf(Source.BEZSVITLA)),
-    ZHYTOMYR("zhytomyrska-oblast", R.string.region_zhytomyr, TWELVE, listOf(Source.BEZSVITLA)),
+    ZAKARPATTIA("zakarpatska-oblast", R.string.region_zakarpattia, TWELVE, listOf(Source.BEZSVITLA, Source.OE_DATA), dataFile = "Zakarpattiaoblenerho.json"),
+    ZAPORIZHZHIA("zaporizka-oblast", R.string.region_zaporizhzhia, TWELVE, listOf(Source.BEZSVITLA, Source.OE_DATA), dataFile = "Zaporizhzhiaoblenergo.json"),
+    ZHYTOMYR("zhytomyrska-oblast", R.string.region_zhytomyr, TWELVE, listOf(Source.BEZSVITLA, Source.OE_DATA), dataFile = "Zhytomyroblenergo.json"),
     // Chernivtsi: the site calls them groups ("Група 1" .. "Група 12"), here they are queues "1" .. "12"
     CHERNIVTSI("chernivetska-oblast", R.string.region_chernivtsi, (1..12).map { "$it" }, listOf(Source.BEZSVITLA)),
-    KYIV("kyiv", R.string.region_kyiv, (1..60).map { "$it.1" }, listOf(Source.BEZSVITLA));
+    KYIV("kyiv", R.string.region_kyiv, (1..60).map { "$it.1" }, listOf(Source.YASNO, Source.DTEK_DATA, Source.BEZSVITLA), yasno = 25 to 902, dataFile = "kyiv.json");
 
     /** The queue chosen when the region is picked: the first one of the region. */
     val defaultQueue: String get() = queues.first()
@@ -520,8 +550,7 @@ object Fetcher {
         val now = System.currentTimeMillis()
         val tomorrow = today.plusDays(1)
         val withTomorrow = tomorrow !in Store.raw(c, extra) || now - Store.tomorrowCheckedAt(c, extra) >= TOMORROW_RECHECK_MS
-        val days = source.load(region, queue, today, hour, withTomorrow)
-        if (days.isEmpty()) throw FetchError(R.string.err_schedule_not_found, queue)
+        val days = loadWithFallback(region, source, queue, today, hour, withTomorrow)
         // settings changed while the request was in flight: the result is stale
         if (region != Settings.region(c) || source != Settings.source(c) || queue != (extra ?: Settings.queue(c))) return false
         if (extra != null && extra !in Settings.extraQueues(c)) return false
@@ -538,6 +567,29 @@ object Fetcher {
     }
 
     private const val TOMORROW_RECHECK_MS = 60 * 60_000L
+
+    /**
+     * The chosen source first; if it fails or has nothing for the queue (the volunteers' JSON files may be out of
+     * date, a site may be down), the region's other sources in their order. The error of the chosen source is
+     * the one the user sees when none of them helps. No connection at all is not worth trying the others.
+     */
+    private fun loadWithFallback(
+        region: Region, source: Source, queue: String, today: LocalDate, hour: Int, withTomorrow: Boolean,
+    ): Map<LocalDate, IntArray> {
+        var first: Exception? = null
+        for (s in listOf(source) + region.sources.filter { it != source }) {
+            try {
+                val days = s.load(region, queue, today, hour, withTomorrow)
+                if (days.isNotEmpty()) return days
+                if (first == null) first = FetchError(R.string.err_schedule_not_found, queue)
+            } catch (e: java.net.UnknownHostException) {
+                throw first ?: e
+            } catch (e: Exception) {
+                if (first == null) first = e
+            }
+        }
+        throw first ?: FetchError(R.string.err_schedule_not_found, queue)
+    }
 
     /**
      * Refresh the cache and redraw what shows it. The tile and the complication are redrawn if the schedule or

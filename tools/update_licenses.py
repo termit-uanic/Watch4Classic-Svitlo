@@ -24,8 +24,11 @@ FAMILIES = [
     ('com.google.errorprone:', 'Error Prone annotations', 'Copyright The Error Prone Authors', 'Apache-2.0'),
     ('com.google.j2objc:', 'J2ObjC annotations', 'Copyright Google Inc.', 'Apache-2.0'),
 ]
-SCHEDULES = ('The schedules come from the website of the Poltava power company, https://www.poe.pl.ua, and from '
-             'https://bezsvitla.com.ua (all the other regions); the app links to both. Wattlo is not an official source.')
+SCHEDULES = ('The schedules come from the website of the Poltava power company, https://www.poe.pl.ua; from the public '
+             'data of https://yasno.ua (Kyiv, Dnipro); from open JSON files on GitHub that volunteers collect from the sites '
+             'of the power companies: https://github.com/Baskerville42/outage-data-ua, '
+             'https://github.com/yaroslav2901/OE_OUTAGE_DATA and https://github.com/vn-progr/gpv-voe-vinnytsia; and from '
+             'https://bezsvitla.com.ua (all the regions); the app links to all of them. Wattlo is not an official source.')
 LICENCE_NAMES = {'Apache-2.0': 'Apache License 2.0', 'MIT': 'MIT License', 'BSD-3-Clause': 'BSD 3-Clause License',
                  'Android-SDK-License': 'Android Software Development Kit License'}
 # what the POMs call the licences
@@ -135,8 +138,12 @@ def main():
           'Wattlo grew out of the app "Svitlo" by Yehor Shamanskyi, '
           '[sudoRM-rSLASH/Watch4Classic-Svitlo](https://github.com/sudoRM-rSLASH/Watch4Classic-Svitlo). That code is used '
           'under the MIT License; its copyright notice is kept in [LICENSE](LICENSE).\n', '## Schedules\n',
-          'The schedules come from the website of the Poltava power company, [poe.pl.ua](https://www.poe.pl.ua), and from '
-          '[bezsvitla.com.ua](https://bezsvitla.com.ua) (all the other regions); the app links to both. Wattlo is not an '
+          'The schedules come from the website of the Poltava power company, [poe.pl.ua](https://www.poe.pl.ua); from the '
+          'public data of [yasno.ua](https://yasno.ua) (Kyiv, Dnipro); from open JSON files on GitHub that volunteers '
+          'collect from the sites of the power companies: [outage-data-ua](https://github.com/Baskerville42/outage-data-ua), '
+          '[OE_OUTAGE_DATA](https://github.com/yaroslav2901/OE_OUTAGE_DATA) and '
+          '[gpv-voe-vinnytsia](https://github.com/vn-progr/gpv-voe-vinnytsia); and from '
+          '[bezsvitla.com.ua](https://bezsvitla.com.ua) (all the regions); the app links to all of them. Wattlo is not an '
           'official source.\n', '## Libraries\n',
           '| Library | License | Copyright |', '|---|---|---|']
     for n, f in fams.items():

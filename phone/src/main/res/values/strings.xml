@@ -58,7 +58,7 @@
     <string name="about_title">About</string>
     <string name="about_version">Version %1$s</string>
     <string name="sources_title">Sources of the schedules</string>
-    <string name="sources_hint">poe.pl.ua, bezsvitla.com.ua: open the sites</string>
+    <string name="sources_hint">Open the sites of the sources</string>
     <string name="licenses_title">Open-source licenses</string>
     <string name="licenses_hint">MIT and third-party libraries</string>
     <string name="setup_welcome_title">Welcome to Wattlo</string>

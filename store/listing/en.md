@@ -29,6 +29,6 @@ SIMPLE AND PRIVATE
 No accounts, no ads, no analytics. The app downloads public schedules by itself and keeps everything on your devices. Languages: Ukrainian, Russian, English. Open source (MIT).
 
 IMPORTANT
-Wattlo is an unofficial app. It is not affiliated with, endorsed by or representing Ukrenergo, the Ministry of Energy, any regional power company, DTEK, YASNO or any other grid operator. The schedules come from public sources (poe.pl.ua, the official schedule of the Poltava power company, and bezsvitla.com.ua) and may differ from the actual outages. Please also follow the official announcements of your power company. Emergency outages are usually not part of the published schedules, so the app does not know about them.
+Wattlo is an unofficial app. It is not affiliated with, endorsed by or representing Ukrenergo, the Ministry of Energy, any regional power company, DTEK, YASNO or any other grid operator. The schedules come from public sources (poe.pl.ua, the official schedule of the Poltava power company, yasno.ua, bezsvitla.com.ua and open files on GitHub that volunteers collect) and may differ from the actual outages. Please also follow the official announcements of your power company. Emergency outages are usually not part of the published schedules, so the app does not know about them.
 
 Source code and privacy policy: https://termit-uanic.github.io/wattlo/

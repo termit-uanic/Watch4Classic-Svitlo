@@ -47,7 +47,7 @@ class SettingsSyncTest {
 
     @Test fun sanitized_sourceIsCheckedAgainstTheRegion() {
         // poe.pl.ua has the schedule of its own region only
-        assertEquals(Source.BEZSVITLA.name, ok.copy(region = Region.KHARKIV.name, source = Source.POE.name).sanitized().source)
+        assertEquals(Region.KHARKIV.sources.first().name, ok.copy(region = Region.KHARKIV.name, source = Source.POE.name).sanitized().source)
         assertEquals(Source.POE.name, ok.copy(source = Source.POE.name).sanitized().source)
         // a source that is gone (energy-ua.info) falls back to the region's own
         assertEquals(Source.POE.name, ok.copy(source = "ENERGY_UA").sanitized().source)
@@ -62,6 +62,12 @@ class SettingsSyncTest {
         assertEquals(12, Region.KHARKIV.queues.size)
         assertTrue("60.1" in Region.ALL_QUEUES)
         assertEquals(22, Region.entries.size)
+        // every JSON source of a region has what it needs to be asked
+        for (r in Region.entries) {
+            if (Source.YASNO in r.sources) assertTrue(r.name, r.yasno != null)
+            if (r.sources.any { it in listOf(Source.DTEK_DATA, Source.OE_DATA, Source.VOE_DATA) }) assertTrue(r.name, r.dataFile != null)
+            assertTrue(r.name, Source.BEZSVITLA in r.sources) // the site with all the regions is always there
+        }
         assertEquals(Region.entries.size, Region.entries.map { it.slug }.toSet().size)
         assertEquals(14, Region.TERNOPIL.queues.size)
         assertTrue("12.2" in Region.ALL_QUEUES)

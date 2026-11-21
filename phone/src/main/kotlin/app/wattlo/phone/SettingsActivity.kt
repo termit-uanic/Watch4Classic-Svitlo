@@ -273,13 +273,10 @@ class SettingsActivity : Activity() {
 
     /** Where the schedules come from, with a link to each site (bezsvitla.com.ua asks for an active link). */
     private fun showSources() {
-        val sites = listOf(
-            "poe.pl.ua" to "https://www.poe.pl.ua/disconnection/power-outages/",
-            "bezsvitla.com.ua" to "https://bezsvitla.com.ua/",
-        )
+        val sites = Source.entries
         AlertDialog.Builder(this)
             .setTitle(R.string.sources_title)
-            .setItems(sites.map { it.first }.toTypedArray()) { _, i -> tryStart(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(sites[i].second))) }
+            .setItems(sites.map { it.host }.toTypedArray()) { _, i -> tryStart(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(sites[i].url))) }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
     }

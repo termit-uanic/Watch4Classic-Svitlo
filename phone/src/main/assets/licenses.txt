@@ -16,7 +16,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 Schedules
 ---------
-The schedules come from the website of the Poltava power company, https://www.poe.pl.ua, and from https://bezsvitla.com.ua (all the other regions); the app links to both. Wattlo is not an official source.
+The schedules come from the website of the Poltava power company, https://www.poe.pl.ua; from the public data of https://yasno.ua (Kyiv, Dnipro); from open JSON files on GitHub that volunteers collect from the sites of the power companies: https://github.com/Baskerville42/outage-data-ua, https://github.com/yaroslav2901/OE_OUTAGE_DATA and https://github.com/vn-progr/gpv-voe-vinnytsia; and from https://bezsvitla.com.ua (all the regions); the app links to all of them. Wattlo is not an official source.
 
 Libraries
 ---------

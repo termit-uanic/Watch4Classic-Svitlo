@@ -114,6 +114,7 @@
     <string name="err_blocked">The site blocked the request (HTTP %1$d)</string>
     <string name="err_browser_check">The site requires a browser check</string>
     <string name="err_schedule_not_found">Schedule for queue %1$s not found</string>
+    <string name="err_source_stale">%1$s has not been updated for a long time</string>
 
     <!-- Schedule change notifications -->
     <string name="notify_setting_today">Today\'s schedule changed</string>

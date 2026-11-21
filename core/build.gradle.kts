@@ -24,4 +24,6 @@ dependencies {
     // Wear OS Data Layer: the shared settings of the watch and the phone (SettingsSync)
     implementation("com.google.android.gms:play-services-wearable:19.0.0")
     testImplementation("junit:junit:4.13.2")
+    // org.json of the Android runtime is only a stub in unit tests
+    testImplementation("org.json:json:20240303")
 }

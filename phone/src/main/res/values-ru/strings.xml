@@ -58,7 +58,7 @@
     <string name="about_title">О приложении</string>
     <string name="about_version">Версия %1$s</string>
     <string name="sources_title">Источники графиков</string>
-    <string name="sources_hint">poe.pl.ua, bezsvitla.com.ua: открыть сайты</string>
+    <string name="sources_hint">Открыть сайты источников</string>
     <string name="licenses_title">Лицензии открытого ПО</string>
     <string name="licenses_hint">MIT и сторонние библиотеки</string>
     <string name="setup_welcome_title">Добро пожаловать в Wattlo</string>
