@@ -72,6 +72,17 @@ class ParsersTest {
     @Test fun bezsvitla_kyivQueueNotInFixture() =
         assertTrue(Schedule.parseBezsvitla(res("bezsvitla_kyiv.html"), LocalDate.of(2026, 11, 20), "2.1").isEmpty())
 
+    // ---------------------------------------------------------------- bezsvitla: Ternopil (14 queues, incl. 7.2 and 12.2)
+
+    /** Real cards of the Ternopil page (1.1, 7.2, 12.2), saved on 2026-11-21: no outages that day. */
+    @Test fun bezsvitla_ternopilOddQueues() {
+        val d = LocalDate.of(2026, 11, 21)
+        for (q in listOf("1.1", "7.2", "12.2")) {
+            val m = Schedule.parseBezsvitla(res("bezsvitla_ternopil.html"), d, q)
+            assertEquals(q, "0".repeat(Schedule.SLOTS), m.getValue(d).str())
+        }
+    }
+
     // ---------------------------------------------------------------- notifications
 
     @Test fun notify_next() {

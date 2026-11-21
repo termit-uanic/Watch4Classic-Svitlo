@@ -73,17 +73,41 @@ enum class Region(
     DNIPRO("dnipropetrovska-oblast", R.string.region_dnipro, TWELVE, listOf(Source.BEZSVITLA)),
     ODESA("odeska-oblast", R.string.region_odesa, TWELVE, listOf(Source.BEZSVITLA)),
     KYIV_OBLAST("kyivska-oblast", R.string.region_kyiv_oblast, TWELVE, listOf(Source.BEZSVITLA)),
+    CHERKASY("cherkaska-oblast", R.string.region_cherkasy, TWELVE, listOf(Source.BEZSVITLA)),
+    CHERNIHIV("chernihivska-oblast", R.string.region_chernihiv, TWELVE, listOf(Source.BEZSVITLA)),
+    IVANO_FRANKIVSK("ivano-frankivska-oblast", R.string.region_ivano_frankivsk, TWELVE, listOf(Source.BEZSVITLA)),
+    KHMELNYTSKYI("khmelnytska-oblast", R.string.region_khmelnytskyi, TWELVE, listOf(Source.BEZSVITLA)),
+    KIROVOHRAD("kirovohradska-oblast", R.string.region_kirovohrad, TWELVE, listOf(Source.BEZSVITLA)),
+    LVIV("lvivska-oblast", R.string.region_lviv, TWELVE, listOf(Source.BEZSVITLA)),
+    MYKOLAIV("mykolaivska-oblast", R.string.region_mykolaiv, TWELVE, listOf(Source.BEZSVITLA)),
+    RIVNE("rivnenska-oblast", R.string.region_rivne, TWELVE, listOf(Source.BEZSVITLA)),
+    SUMY("sumska-oblast", R.string.region_sumy, TWELVE, listOf(Source.BEZSVITLA)),
+    TERNOPIL("ternopilska-oblast", R.string.region_ternopil, TERNOPIL_QUEUES, listOf(Source.BEZSVITLA)),
+    VINNYTSIA("vinnytska-oblast", R.string.region_vinnytsia, TWELVE, listOf(Source.BEZSVITLA)),
+    VOLYN("volynska-oblast", R.string.region_volyn, TWELVE, listOf(Source.BEZSVITLA)),
+    ZAKARPATTIA("zakarpatska-oblast", R.string.region_zakarpattia, TWELVE, listOf(Source.BEZSVITLA)),
+    ZAPORIZHZHIA("zaporizka-oblast", R.string.region_zaporizhzhia, TWELVE, listOf(Source.BEZSVITLA)),
+    ZHYTOMYR("zhytomyrska-oblast", R.string.region_zhytomyr, TWELVE, listOf(Source.BEZSVITLA)),
     KYIV("kyiv", R.string.region_kyiv, (1..60).map { "$it.1" }, listOf(Source.BEZSVITLA));
 
     companion object {
         /** Every queue name of every region: their caches share a naming scheme. */
         val ALL_QUEUES: List<String> get() = entries.flatMap { it.queues }.distinct()
         fun of(name: String?): Region = entries.firstOrNull { it.name == name } ?: POLTAVA
+
+        /** All regions in the alphabetical order of their names in the language of [c] (for the lists to choose from). */
+        fun sorted(c: android.content.Context): List<Region> {
+            val collator = java.text.Collator.getInstance(c.resources.configuration.locales[0])
+            return entries.sortedWith { a, b -> collator.compare(c.getString(a.nameRes), c.getString(b.nameRes)) }
+        }
     }
 }
 
 // the 12 groups of most operators: 1.1, 1.2, 2.1 ... 6.2
 private val TWELVE = (1..6).flatMap { q -> (1..2).map { "$q.$it" } }
+
+// Ternopil region: 1.1 ... 6.2 plus 7.2 and 12.2, as the site lists them
+private val TERNOPIL_QUEUES = listOf("1.1", "1.2", "2.1", "2.2", "3.1", "3.2", "4.1", "4.2", "5.1", "5.2", "6.1", "6.2", "7.2", "12.2")
 
 /** A fetch failure with a localized message: resolved with a Context where the error is stored. */
 class FetchError(@androidx.annotation.StringRes val res: Int, vararg val args: Any) : Exception()

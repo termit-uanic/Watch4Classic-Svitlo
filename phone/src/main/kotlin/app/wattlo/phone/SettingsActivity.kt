@@ -194,7 +194,7 @@ class SettingsActivity : Activity() {
 
     /** Another region has its own queues and sites: the source and the main queue start again from the defaults. */
     private fun pickRegion() {
-        val all = Region.entries
+        val all = Region.sorted(this)
         AlertDialog.Builder(this)
             .setTitle(getString(CoreR.string.region))
             .setSingleChoiceItems(all.map { getString(it.nameRes) }.toTypedArray(), all.indexOf(Settings.region(this))) { d, i ->

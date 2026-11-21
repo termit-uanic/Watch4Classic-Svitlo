@@ -166,7 +166,7 @@ class SetupActivity : Activity() {
     private fun regionStep(): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         addView(title(R.string.setup_region_title, R.string.setup_region_body))
-        addView(grid(1, Region.entries.map { r ->
+        addView(grid(1, Region.sorted(this@SetupActivity).map { r ->
             chip(getString(r.nameRes), r == region, multi = false) {
                 if (r != region) { region = r; main = Settings.DEFAULT_QUEUE; extras.clear() }
                 show()
@@ -174,7 +174,7 @@ class SetupActivity : Activity() {
         }))
     }
 
-    /** Most regions have 12 queues, Kyiv has 60: then the chips are smaller. */
+    /** Most regions have 12 queues (Ternopil 14), Kyiv has 60: then the chips are smaller. */
     private fun columns() = if (region.queues.size > 12) 5 else 3
 
     private fun queueStep(): View = LinearLayout(this).apply {

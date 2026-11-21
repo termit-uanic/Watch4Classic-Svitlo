@@ -61,5 +61,10 @@ class SettingsSyncTest {
         assertEquals(60, Region.KYIV.queues.size)
         assertEquals(12, Region.KHARKIV.queues.size)
         assertTrue("60.1" in Region.ALL_QUEUES)
+        assertEquals(21, Region.entries.size)
+        assertEquals(Region.entries.size, Region.entries.map { it.slug }.toSet().size)
+        assertEquals(14, Region.TERNOPIL.queues.size)
+        assertTrue("12.2" in Region.ALL_QUEUES)
+        assertEquals("12.2", ok.copy(region = Region.TERNOPIL.name, source = Source.BEZSVITLA.name, queue = "12.2").sanitized().queue)
     }
 }
